@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e # exit with nonzero exit code if anything fails
 
+pushd src
+make
+popd
+
 # clear and re-create the out directory
 rm -rf out || exit 0
 mkdir out
