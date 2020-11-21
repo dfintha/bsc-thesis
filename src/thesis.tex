@@ -1,105 +1,116 @@
-% TODO Change language to en_GB (recommended) or en_US for English documents
-\documentclass[11pt,a4paper,oneside]{report}             % Single-side
-%\documentclass[11pt,a4paper,twoside,openright]{report}  % Duplex
+\documentclass[11pt,a4paper,oneside]{report}
 
 \input{include/packages}
 
-%TODO Set the main variables
-\newcommand{\vikszerzoVezeteknev}{Gipsz}
-\newcommand{\vikszerzoKeresztnev}{Jakab}
+\newcommand{\vikszerzoVezeteknev}{Fintha}
+\newcommand{\vikszerzoKeresztnev}{Dénes Flórián}
 
-\newcommand{\vikkonzulensAMegszolitas}{dr.~}
-\newcommand{\vikkonzulensAVezeteknev}{Konzulens}
-\newcommand{\vikkonzulensAKeresztnev}{Egy}
+\newcommand{\vikkonzulensAMegszolitas}{Dr.~}
+\newcommand{\vikkonzulensAVezeteknev}{Bergmann}
+\newcommand{\vikkonzulensAKeresztnev}{Gábor}
 
 \newcommand{\vikkonzulensBMegszolitas}{}
-\newcommand{\vikkonzulensBVezeteknev}{Konzulens}
-\newcommand{\vikkonzulensBKeresztnev}{Kettő}
+\newcommand{\vikkonzulensBVezeteknev}{}
+\newcommand{\vikkonzulensBKeresztnev}{}
 
 \newcommand{\vikkonzulensCMegszolitas}{}
 \newcommand{\vikkonzulensCVezeteknev}{}
 \newcommand{\vikkonzulensCKeresztnev}{}
 
-\newcommand{\vikcim}{Elektronikus terelők} % Cím
-\newcommand{\viktanszek}{\bmemit} % Tanszék
-\newcommand{\vikdoktipus}{\bsc} % Dokumentum típusa (\bsc vagy \msc)
-\newcommand{\vikmunkatipusat}{szakdolgozatot} % a "hallgató nyilatkozat" részhez: szakdolgozatot vagy diplomatervet
+\newcommand{\vikcim}{Performance analysis of a language tooling}
+\newcommand{\viktanszek}{\bmemit}
+\newcommand{\vikdoktipus}{\bsc}
+\newcommand{\vikmunkatipusat}{szakdolgozatot}
 
 \input{include/tdk-variables}
-\newcommand{\szerzoMeta}{\vikszerzoVezeteknev{} \vikszerzoKeresztnev} % egy szerző esetén
-%\newcommand{\szerzoMeta}{\vikszerzoVezeteknev{} \vikszerzoKeresztnev, \tdkszerzoB} % két szerző esetén
-
-%TODO Language configuration -- choose one
-% Beállítások magyar nyelvű dolgozathoz
-\input{include/thesis-hu}
-% Settings for English documents
-%\input{include/thesis-en}
-
+\newcommand{\szerzoMeta}{\vikszerzoVezeteknev{} \vikszerzoKeresztnev}
+\input{include/thesis-en}
 \input{include/preamble}
 
-%--------------------------------------------------------------------------------------
-% Table of contents and the main text
-%--------------------------------------------------------------------------------------
 \begin{document}
 
 \pagenumbering{gobble}
-
-%TODO These includes define guidelines -- remove these
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\include{include/guideline}
-\include{include/project}
-
 \selectthesislanguage
-
-%TODO Titlepage -- choose one from below
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\include{include/titlepage}		   % Szakdolgozat/Diplomaterv címlap
-%\include{include/titlepage-tdk}	% TDK címlap
-%\include{include/titlepage-otdk}   % OTDK címlap
-
-
-% Table of Contents
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\include{include/titlepage}
 \tableofcontents\cleardoublepage
+\include{include/declaration}
 
+% --- ABSTRACT --------------------------------------------------------------- %
 
-% Declaration and Abstract
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\include{include/declaration} %TODO Hallgatói nyilatkozat -- TDK és OTDK esetén törlendő!
-\include{content/abstract}    %TODO Összefoglaló -- TDK és OTDK esetén nem kötelező
+\pagenumbering{roman}
+\setcounter{page}{1}
 
+\selecthungarian
+\chapter*{Kivonat}\addcontentsline{toc}{chapter}{Kivonat}
+Kivonat
 
-% The main part of the thesis
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\vfill
+
+\selectenglish
+\chapter*{Abstract}\addcontentsline{toc}{chapter}{Abstract}
+Abstract
+
+\vfill
+
+% ---------------------------------------------------------------------------- %
+
+\cleardoublepage
+\selectthesislanguage
+\newcounter{romanPage}
+\setcounter{romanPage}{\value{page}}
+\stepcounter{romanPage}
+
 \pagenumbering{arabic}
 
-%TODO import your own content
-\include{content/introduction}
-\include{content/latex-tools}
-\include{content/thesis-format}
-\include{content/template-usage}
+% --- CONTENT ---------------------------------------------------------------- %
 
+\chapter{Introduction}
+\section{Problem description}
+\section{Work environment}
+\subsection{Eclipse Platform for VIATRA development}
+\subsection{YourKit Java Profiler}
+\subsection{The VIATRA source code}
 
-% Acknowledgements
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\include{content/acknowledgement}
+\chapter{Finding the cause of slow editors}
+\section{Profiling the query language editor}
+\subsection{The profiling workflow}
+\subsection{Dynamic rebuild}
+\subsection{The functions taking the most time}
+\section{Type inference in VIATRA Query}
+\subsection{Re-generating metamodels}
+\subsection{Possible causes of the slowdowns}
+\section{Conclusion}
 
+\chapter{Optimizing query metamodel generation}
+\section{Solution ideas}
+\subsection{TODO: Possible solution 1}
+\subsection{TODO: Possible solution 2}
+\section{Choosing a viable solution}
+\section{Implementing the chosen solution}
+\subsection{TODO: Solution step 1}
+\subsection{TODO: Solution step 2}
+\subsection{TODO: Solution step 3}
+\section{Comparing the optimized state with the original one}
+\subsection{A first look}
+\subsection{Original samples}
+\subsection{Fixed samples}
 
-% List of Figures, Tables
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\chapter{Applying changes to the main code repository}
+\section{Writing documentation and tests}
+\subsection{The asciidoc format}
+\section{Opening a bug tracker ticket}
+\section{Sending the changes to version control}
+\section{Asking for code review}
+\section{Integrating changes into the next VIATRA version}
+
+% ---------------------------------------------------------------------------- %
+
 %\listoffigures\addcontentsline{toc}{chapter}{\listfigurename}
 %\listoftables\addcontentsline{toc}{chapter}{\listtablename}
 
-
-% Bibliography
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 \addcontentsline{toc}{chapter}{\bibname}
+\nocite{*} % FIXME remove
 \bibliography{bib/mybib}
 
-
-% Appendix
-%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\include{content/appendices}
-
-%\label{page:last}
+\label{page:last}
 \end{document}
