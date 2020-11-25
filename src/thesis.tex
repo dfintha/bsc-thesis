@@ -212,10 +212,41 @@ could configure the profiler and start profiling of the software in Eclipse.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
+Users have complained, that the editor severely slows down during VQL pattern
+editing, while working larger or more complex queries. To prove this statement,
+I had to get a query that is both known to be slow and is correct. Fortunately,
+there is an open-source VIATRA project, which contains a file, which causes
+severe slowdowns, although, this generated file was not correct.
+
+To create a test environment, I took that file, and fixed it in a new query
+project, providing myself a clean slate for testing. The resulting file was over
+5000 lines long and had a numerous amount of patterns referencing each other.
+Editing this file caused 5-6 second hangups even with a moderately strong
+computer.
+
 \section{Profiling the query language editor}
 \subsection{The profiling workflow}
-\subsection{Dynamic rebuild}
-\subsection{The functions taking the most time}
+First of all, I had to create a profiling workflow, which describes the steps
+taken to profile the software. Following a fixed workflow ensures that snapshots
+will not contain unrelated parts of the software execution, and that snapshots
+will represent the same steps taken.
+
+\begin{enumerate}
+    \item{Start VIATRA in profiling mode, but without starting profiling itself.}
+    \item{Wait for Eclipse to start and finish initial tasks.}
+    \item{Open the query file, and wait for it to completely load, and highlight syntax.}
+    \item{Navigate to a pattern, which we will manually duplicate.}
+    \item{\textbf{Start profiling in the profiler software.}}
+    \item{Manually type in the pattern again, with a different name.}
+    \item{\textbf{Stop profiling in the profiler software, and save a snapshot.}}
+    \item{Discard the changes we made in the file.}
+    \item{Quit Eclipse.}
+\end{enumerate}
+
+\subsection{Profiling with default settings}
+\subsection{Profiling without automatic update of target platform metamodels}
+\subsection{Finding the critical part of metamodel updates}
+
 \section{Type inference in VIATRA Query}
 \subsection{Re-generating metamodels}
 \subsection{Probable cause of the slowdowns}
