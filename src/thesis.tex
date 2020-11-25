@@ -251,8 +251,92 @@ will represent the same steps taken.
 \end{enumerate}
 
 \subsection{Profiling with default settings}
+Having a sound profiling plan, I started profiling the software. During my
+first profiling session, I did notice the hangups, when I edited the query. This
+session provided me with the following suspicious function trail. Each row of
+one or more functions in this table was called by the one before it. Rows with
+bold font are representing functions inside the VIATRA code base.
+
+We spent most of the time in the
+\texttt{XtextDocumentReconcileStrategy.postParse} function. The table below
+gives detailed information about which functions called by \texttt{postParse}
+were the most costly.
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l c }
+        \toprule
+        Function & Time (\%) \\
+        \midrule
+        XtextDocumentReconcileStrategy.postParse & 100\% \\
+        EcoreUtil2.resolveLazyCrossReferences & 99\% \\
+        BatchLinkableResource.resolveLazyCrossReferences & 99\% \\
+        BatchLinkingService.resolveBatched & 97\% \\
+        AbstractBatchTypeResolver.resolveTypes & 97\% \\
+        CachingBatchTypeResolver.doResolveTypes & 97\% \\
+        OnChangeEvictingCache.get & 95\% \\
+        CachingBatchTypeResolver\$1.get & 95\% \\
+        CachingBatchTypeResolver\$1.get & 95\% \\
+        DefaultBatchTypeResolver.getTypeResolver & 95\% \\
+        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 92\% \\
+        BatchLinkableResource.getContents & 92\% \\
+        DerivedStateAwareResource.installDerivedState & 92\% \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 92\% \\
+        JvmModelAssociator.installDerivedState & 92\% \\
+        JvmModelAssociator\$1.run & 91\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 78\% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Merged callee run times in postParse with default settings}
+    \label{tab:postparse-default}
+\end{table}
+
+The EMFPatternLanguageJvmModelInferrer class has multiple lambdas, but the top
+three with most time spent in them are all calling the
+\texttt{AbstractTypeInferrer.getJvmType} method, which is responsible for their
+long run time.
+
 \subsection{Profiling without automatic update of target platform metamodels}
-\subsection{Finding the critical part of metamodel updates}
+After turning off this automatic update feature, we can have more concise
+profiling results. Repeating the same process yielded the following, similar
+results. Now the \texttt{XtextDocumentReconcileStrategy.postParse} function only
+took 69\% of the total run time.
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l c }
+        \toprule
+        Function & Time (\%) \\
+        \midrule
+        XtextDocumentReconcileStrategy.postParse & 100\% \\
+        EcoreUtil2.resolveLazyCrossReferences & 96\% \\
+        BatchLinkableResource.resolveLazyCrossReferences & 96\% \\
+        BatchLinkingService.resolveBatched & 86\% \\
+        AbstractBatchTypeResolver.resolveTypes & 86\% \\
+        CachingBatchTypeResolver.doResolveTypes & 86\% \\
+        OnChangeEvictingCache.get & 73\% \\
+        CachingBatchTypeResolver\$1.get & 73\% \\
+        CachingBatchTypeResolver\$1.get & 73\% \\
+        DefaultBatchTypeResolver.getTypeResolver & 73\% \\
+        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 60\% \\
+        BatchLinkableResource.getContents & 60\% \\
+        DerivedStateAwareResource.installDerivedState & 60\% \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 60\% \\
+        JvmModelAssociator.installDerivedState & 59\% \\
+        JvmModelAssociator\$1.run & 56\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 51\% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Merged callee run times in postParse without automatic update}
+    \label{tab:postparse-no-auto-update}
+\end{table}
+
+In conclusion, metamodel updates are very costly, and even though turning
+automatic updates off does save some time, these updates still happen
+frequently, and should be optimized. My next step was to understand the code
+responsible for type inference, and look for opportunities to optimize it.
 
 \section{Type inference in VIATRA Query}
 \subsection{Re-generating metamodels}
