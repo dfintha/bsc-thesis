@@ -104,13 +104,108 @@ to the developers of VIATRA, so my fix could be included in its next release.
 
 \chapter{Introduction}
 \section{Introduction to VIATRA Query}
-\subsection{Querying models}
-\subsection{Finding patterns}
+\subsection{The VIATRA plugins}
+VIATRA is an open-source project backed by the Eclipse Foundation, which
+integrates into the Eclipse development environment, providing functionalities
+like obfuscation, transformation, and query of models.
+
+During the thesis I won't install VIATRA as an Eclipse package, but build parts
+of it (the query engine) from source, so I can debug and modify its code, and
+omit additional functionality, that I won't need.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/eclipse-viatra.png}
+\caption{The VIATRA Transformation Development perspective in Eclipse}
+\label{fig:eclipse-viatra}
+\end{figure}
+
 \subsection{VIATRA Query Language (VQL)}
+In VIATRA Query, we can write patterns that are matched on a loaded model. This
+is done through a powerful domain-specific language (DSL) called the VIATRA
+Query Language (VQL). The VIATRA Query plugins provide an editor with proper
+syntax highlighting to make writing patterns easier.
+
+Pattern syntax resembles Prolog in a way, that instead of writing functions, we
+write statements, which are evaluated. The engine will try to calculate each
+matching dataset for the pattern.
+
+\begin{lstlisting}[frame=single]
+pattern grandparentOf(grandchild : Person, grandparent : Person) {
+    Person.parent(grandchild, parent);
+    Person.parent(parent, grandparent);
+}
+\end{lstlisting}
+
+In this pattern, we declare a grandparent of a person, as a parent of one of its
+parents. This will match each grandparent-grandchild relation.
+
+Patterns can have multiple declarations, and use other patterns.
+If we separately track mothers and fathers instead of just parents, our patterns
+may look like this.
+
+\begin{lstlisting}[frame=single]
+pattern parentOf(child : Person, parent : Person) {
+    Person.mother(child, parent);
+} or {
+    Person.father(child, parent);
+}
+
+pattern grandparentOf(grandchild : Person, grandparent : Person) {
+    find parentOf(grandchild, parent);
+    find parentOf(parent, grandparent);
+}
+\end{lstlisting}
+
+The last language feature I'll talk about is aggregation. You can use
+aggregators for numeric results like \textbf{count}, \textbf{max}, \textbf{min},
+and \textbf{sum}. In this snippet, the underscore means a parameter that is not
+used in our pattern.
+
+\begin{lstlisting}[frame=single]
+pattern grandparentAmount(child : Person, amount) {
+    amount == count find grandparentOf(child, _);
+}
+\end{lstlisting}
+
 \subsection{Formulating constraints}
+One can also provide model validation, by writing \textbf{constraint patterns}.
+This raises an error if VIATRA finds any matches to that pattern. This can be
+done by annotating our validation pattern.
+
+\begin{lstlisting}[frame=single]
+@Constraint(targetEditorId = "org.dfintha.familytree",
+            severity = "error",
+            message = "Person is both a parent and grandparent of someone.",
+            key = {"parent"})
+pattern bothParentAndGrandparent(person : Person, parent : Person) {
+    find parentOf(person, parent);
+    find grandparentOf(person, parent);
+}
+\end{lstlisting}
+
 \section{Work environment}
 \subsection{Eclipse Platform for VIATRA development}
+VIATRA, as an Eclipse plugin is developed in Eclipse itself. As such, I needed
+an Eclipse environment to develop it. Normally, this should be a straightforward
+process, utilizing the Eclipse Oomph installer, but at the time I did my
+research the installer didn't work as expected, so I had to install the required
+plugins, and add the VIATRA source code to my environment manually.
+
+The detailed steps on how to do this is is written down on the VIATRA project
+website.
+
 \subsection{YourKit Java Profiler}
+Since the main issue we have to investigate is a slowdown, I had to use a
+profiler software.
+
+Profiler software help developers optimize code, by examining various aspects of
+the running software, like how much time did we spend in a function, or how many
+times a function was called. During my thesis, I used the YourKit Java Profiler,
+for which the faculty has given me a license.
+
+After installing the profiler, I also had to install its Eclipse plugin, so I
+could configure the profiler and start profiling of the software in Eclipse.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
