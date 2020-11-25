@@ -1,2 +1,2 @@
 all:
-	./deploy.sh
+	@./deploy.sh
