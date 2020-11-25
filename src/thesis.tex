@@ -353,12 +353,64 @@ responsible for type inference, and look for opportunities to optimize it.
 \subsection{Fixed samples}
 
 \chapter{Applying changes to the main code repository}
-\section{Writing documentation and tests}
-\subsection{The asciidoc format}
+\section{Documenting our changes}
+It is just natural, that we would document the changes we've made to the users.
+%% TODO: either a new button is added to manually invalidate cache, or just note
+%%       that it became faster, either way, documentation must be written
+
 \section{Opening a bug tracker ticket}
-\section{Sending the changes to version control}
+The Eclipse Foundation uses Bugzilla as its bug tracker. Each known bug has a
+ticket assigned, and this ticket has a unique identifier. Tickets contain
+a detailed description of the issue, and some other metadata, such as product,
+version, importance, and target milestone.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/bugzilla.png}
+\caption{Eclipse Foundation's Bugzilla bug tracker}
+\label{fig:bugzilla}
+\end{figure}
+
+These tickets can be assigned to developers, and have their status tracked, so
+the overseeing the flow of work would be trivial.
+
+\section{Keeping the changes in version control}
+VIATRA source code is stored in a Git repository, hosted by the Eclipse
+foundation. To obtain the source code, developers have to \textbf{clone} the
+repository, and work can be done on their own \textbf{branches}. Git has a
+command-line tool, but Eclipse can also manage version control by using the
+Git perspective.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/eclipse-git.png}
+\caption{The Git perspective in Eclipse}
+\label{fig:eclipse-git}
+\end{figure}
+
+Changes on the source code are contained in \textbf{commits}, and in Eclipse
+development each bug fixing commit correlates with a Bugzilla ticket, and has
+the following format.
+
+\begin{lstlisting}
+[<Bugzilla-ID>] <Commit-Description>
+\end{lstlisting}
+
 \section{Asking for code review}
-\section{Integrating changes into the next VIATRA version}
+Before any code could be integrated to the mainstream VIATRA source, peer review
+must be conducted. The Eclipse Foundation uses Gerrit to do so, which is a
+web-based code review tool.
+
+In Gerrit, developers can see other developers' work, and comment and rate their
+commits. The common practice is, that two other developers must accept a
+commit before it can be integrated.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/gerrit.png}
+\caption{The Gerrit Code Review tool}
+\label{fig:gerrit}
+\end{figure}
 
 % ---------------------------------------------------------------------------- %
 
