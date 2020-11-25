@@ -333,30 +333,30 @@ took 69\% of the total run time.
     \label{tab:postparse-no-auto-update}
 \end{table}
 
+\section{Conclusion}
 In conclusion, metamodel updates are very costly, and even though turning
 automatic updates off does save some time, these updates still happen
 frequently, and should be optimized. My next step was to understand the code
 responsible for type inference, and look for opportunities to optimize it.
 
-\section{Type inference in VIATRA Query}
-\subsection{Re-generating metamodels}
-\subsection{Probable cause of the slowdowns}
-\section{Conclusion}
+My choice of optimization is implementing a cache for the
+\texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
+Since it takes a large part of the run time (33\% without automatic update,
+and 75\% with it), the speedup should be significant.
 
 \chapter{Optimizing query metamodel generation}
-\section{TODO SOLUTION IDEA}
-\section{Implementing the chosen solution}
-\subsection{TODO SOLUTION STEPS}
+\section{Implementing a type inferrer cache}
+\subsection{Investigating the slow code}
+\subsection{Adding result caching}
+\subsection{Clearing the cache when it becomes invalid}
 \section{Comparing the optimized state with the original one}
-\subsection{A first look}
-\subsection{Original samples}
-\subsection{Fixed samples}
+\subsection{Profiling results}
 
 \chapter{Applying changes to the main code repository}
 \section{Documenting our changes}
-It is just natural, that we would document the changes we've made to the users.
-%% TODO: either a new button is added to manually invalidate cache, or just note
-%%       that it became faster, either way, documentation must be written
+It is just natural, that we would document the changes we've made to the users,
+even if it's not a functional change. The VIATRA documentation is written in
+asciidoc format, and each release has its own changelog.
 
 \section{Opening a bug tracker ticket}
 The Eclipse Foundation uses Bugzilla as its bug tracker. Each known bug has a
