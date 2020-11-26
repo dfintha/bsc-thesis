@@ -301,7 +301,7 @@ long run time.
 After turning off this automatic update feature, we can have more concise
 profiling results. Repeating the same process yielded the following, similar
 results. Now the \texttt{XtextDocumentReconcileStrategy.postParse} function only
-took 69\% of the total run time.
+took 67\% of the total run time.
 
 \begin{table}[ht]
     \footnotesize
@@ -313,20 +313,20 @@ took 69\% of the total run time.
         XtextDocumentReconcileStrategy.postParse & 100\% \\
         EcoreUtil2.resolveLazyCrossReferences & 96\% \\
         BatchLinkableResource.resolveLazyCrossReferences & 96\% \\
-        BatchLinkingService.resolveBatched & 86\% \\
-        AbstractBatchTypeResolver.resolveTypes & 86\% \\
-        CachingBatchTypeResolver.doResolveTypes & 86\% \\
-        OnChangeEvictingCache.get & 73\% \\
-        CachingBatchTypeResolver\$1.get & 73\% \\
-        CachingBatchTypeResolver\$1.get & 73\% \\
-        DefaultBatchTypeResolver.getTypeResolver & 73\% \\
-        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 60\% \\
-        BatchLinkableResource.getContents & 60\% \\
-        DerivedStateAwareResource.installDerivedState & 60\% \\
-        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 60\% \\
-        JvmModelAssociator.installDerivedState & 59\% \\
-        JvmModelAssociator\$1.run & 56\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 51\% \\
+        BatchLinkingService.resolveBatched & 87\% \\
+        AbstractBatchTypeResolver.resolveTypes & 87\% \\
+        CachingBatchTypeResolver.doResolveTypes & 87\% \\
+        OnChangeEvictingCache.get & 75\% \\
+        CachingBatchTypeResolver\$1.get & 75\% \\
+        CachingBatchTypeResolver\$1.get & 75\% \\
+        DefaultBatchTypeResolver.getTypeResolver & 75\% \\
+        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 62\% \\
+        BatchLinkableResource.getContents & 62\% \\
+        DerivedStateAwareResource.installDerivedState & 62\% \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 62\% \\
+        JvmModelAssociator.installDerivedState & 61\% \\
+        JvmModelAssociator\$1.run & 57\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 52\% \\
         \bottomrule
     \end{tabular}
     \caption{Merged callee run times in postParse without automatic update}
