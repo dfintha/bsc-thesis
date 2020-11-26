@@ -345,8 +345,46 @@ Since it takes a large part of the run time (33\% without automatic update,
 and 75\% with it), the speedup should be significant.
 
 \chapter{Optimizing query metamodel generation}
+\section{The Xtext language framework}
+The VIATRA Query Language was written using the Xtext language framework, which
+is an effective tool for writing programming and domain-based languages. This
+framework provides a proper environment to work with our language in Eclipse,
+including syntax highlighting.
+
+To validate our query, the Xtext framework parses the query written in VQL
+(partially utilizing VIATRA's code), creates a document object model (DOM) of
+it, and finally, runs checks on said model. The process of building this DOM is
+calling the \texttt{IDerivedStateComputer.installDerivedState} function in the
+Xtext framework, which is responsible for producing the current state of our
+query.
+
+In VQL, declaring the types of parameters and variables is not mandatory. As
+such, during the production of a model state, the framework has to infer the
+types of entities that do not have an explicitly declared type. During this
+process, \texttt{getJvmType} is called multiple times. Let us see, how this
+function works.
+
+\begin{lstlisting}[language=java]
+public IInputKey getType(Expression ex) {
+    final IInputKey declaredType = getDeclaredType(ex);
+    if (declaredType != null) {
+        return declaredType;
+    } else {
+        return getInferredType(ex);
+    }
+}
+
+public JvmTypeReference getJvmType(Expression ex, EObject context) {
+    return typeSystem.toJvmTypeReference(getType(ex), context);
+}
+\end{lstlisting}
+
+The profiling session showed us that we spend most of the time in the
+\texttt{getType} function, and inside that, the \texttt{getInferredType}
+function, which actually does a costly type calculation, and does so repeatedly.
+This looks like a good candidate for some caching mechanism.
+
 \section{Implementing a type inferrer cache}
-\subsection{Investigating the slow code}
 \subsection{Adding result caching}
 \subsection{Clearing the cache when it becomes invalid}
 \section{Comparing the optimized state with the original one}
