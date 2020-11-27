@@ -123,6 +123,7 @@ its dependencies.
 
 \section{VIATRA Query Language (VQL)}
 \subsection{Pattern matching on models}
+%% TODO: Explain pattern matching on models
 
 In VIATRA Query, we can write such patterns that are matched on a loaded model.
 This is done through a powerful domain-specific language (DSL) called the VIATRA
@@ -191,6 +192,7 @@ pattern bothParentAndGrandparent(person : Person, parent : Person) {
 \end{lstlisting}
 
 \section{The Xtext language framework}
+%% TODO: Explain what Xtext is, how it works
 
 \section{Work environment}
 \subsection{Eclipse Platform for VIATRA development}
@@ -202,6 +204,7 @@ plugins, and add the VIATRA source code to my environment manually.
 
 The detailed steps on how to do this is is written down on the VIATRA project
 website.
+%% TODO: Cite the website
 
 \subsection{YourKit Java Profiler}
 Since the main issue we have to investigate is a slowdown, I had to use a
@@ -227,10 +230,13 @@ could configure the profiler and start profiling of the software in Eclipse.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
+%% TODO: Explain problems
 
 \section{Creating a test candidate}
+%% TODO: Describe the process
 
 \section{Manual testing}
+%% TODO: Describe the process
 
 \section{Profiling the query language editor}
 \subsection{Declaring a profiling workflow}
@@ -367,6 +373,7 @@ VIATRA Query has to \textbf{infer their types} based on the context they reside
 in.
 
 \section{Pinpointing the critical part}
+%% TODO: Introduce solution
 
 My choice of optimization is implementing a cache for the
 \texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
@@ -566,6 +573,7 @@ included.
 \end{table}
 
 \subsection{Test the functional correctness of the solution}
+%% TODO: Run tests, write down test results
 
 \subsection{Conclusion}
 If we look at the previous implementation of \texttt{getType}, we can see that
@@ -587,6 +595,7 @@ To make such a change, I had to look for some ways to be informed about the
 changed parts of the query model.
 
 \subsection{Checking for changed parts}
+%% TODO: Granulated change check?
 
 \chapter{Publishing my work}
 \section{Documenting the changes}
@@ -664,11 +673,13 @@ commit before it can be integrated.
 \end{figure}
 
 \section{Integrating changes to the next VIATRA version}
+%% TODO: Describe the integration process
 
 \chapter{Summary}
 %% TODO: Summarize work
 
 \section{Improvement opportunities}
+%% TODO: Add improvement opportunities
 
 % ---------------------------------------------------------------------------- %
 
