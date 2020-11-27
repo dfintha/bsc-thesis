@@ -362,13 +362,24 @@ calling the \texttt{IDerivedStateComputer.installDerivedState} function in the
 Xtext framework, which is responsible for producing the current state of our
 query.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/xtext-validation-process.png}
+\caption{The Xtext validation process}
+\label{fig:xtext-validation-process}
+\end{figure}
+
+The slowest part of this process is building the DOM from the parsed query code.
+During model building, the types of variables must be interpreted, and while
+most of these variables have a \textbf{declared type}, some of them do not, and
+VIATRA Query has to \textbf{infer their types} based on the context they reside
+in.
+
 \section{Implementing a type inferrer cache}
-\subsection{Caching computed results}
-In VQL, declaring the types of parameters and variables is not mandatory. As
-such, during the production of a model state, the framework has to infer the
-types of entities that do not have an explicitly declared type. During this
-process, \texttt{getJvmType} is called multiple times. Let us see, how this
-function works.
+\subsection{Inspecting the original functionality}
+During the type inference process, \texttt{getJvmType} is called numerous times,
+resulting in a massive amount of processing time spent there. Let us see, how
+this function works.
 
 \begin{lstlisting}[language=java]
 /**
