@@ -382,6 +382,8 @@ resulting in a massive amount of processing time spent there. Let us see, how
 this function works.
 
 \begin{lstlisting}[language=java]
+// ...
+
 /**
  * @since 1.3
  */
@@ -404,6 +406,8 @@ public IInputKey getType(Expression ex) {
 public JvmTypeReference getJvmType(Expression ex, EObject context) {
     return typeSystem.toJvmTypeReference(getType(ex), context);
 }
+
+// ...
 \end{lstlisting}
 
 The profiling session showed us that we spend most of the time in the
@@ -411,6 +415,7 @@ The profiling session showed us that we spend most of the time in the
 function, which actually does a costly type calculation, and does so repeatedly.
 This looks like a good candidate for some caching mechanism.
 
+\subsection{Caching computed results}
 My first approach was adding a cache to the \texttt{AbstractTypeInferrer} class,
 storing the types (\texttt{IInputKey}) of \texttt{Expression} objects. I thought
 this cache would be invalidated at the start of each validation process. As
@@ -419,6 +424,8 @@ such.
 The following changes were made to the \texttt{AbstractTypeInferrer} class.
 
 \begin{lstlisting}[language=java]
+// ...
+
 private HashMap<Expression, IInputKey> typeCache;
 
 // ...
@@ -443,6 +450,16 @@ public IInputKey getType(Expression ex) {
 }
 
 // ...
+\end{lstlisting}
+
+\subsection{Clearing the cache}
+Along with the caching, I also had to perform cache invalidation at the
+beginning of each validation process. To do so, I've added a function to clear
+the cache in \texttt{AbstractTypeInferrer}, which is called at the start of the
+\texttt{installDerivedState} function.
+
+\begin{lstlisting}[language=java]
+// ...
 
 /**
  * @since 2.5
@@ -450,13 +467,13 @@ public IInputKey getType(Expression ex) {
 public void clearCache() {
     typeCache = new HashMap<>();
 }
+
+// ...
 \end{lstlisting}
 
-Along with the caching, I also had to perform cache invalidation at the
-beginning of each validation process. To do so, I've added cache clearing to the
-start of the \texttt{installDerivedState} function.
-
 \begin{lstlisting}[language=java]
+// ...
+
 @Override
 public void installDerivedState(DerivedStateAwareResource resource, boolean preIndexingPhase) {
     feedback.clearMarkers(resource, IErrorFeedback.JVMINFERENCE_ERROR_TYPE);
@@ -469,6 +486,8 @@ public void installDerivedState(DerivedStateAwareResource resource, boolean preI
         calculateAggregateTypes(resource);
     }
 }
+
+// ...
 \end{lstlisting}
 
 \subsection{Comparing the optimized state with the original one}
