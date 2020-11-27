@@ -215,8 +215,32 @@ time did we spend in a function, or how many times a function was called, and
 compile the measured data into snapshots, where the developer can analyze the
 results.
 
-During my thesis, I used the YourKit Java Profiler, for which the faculty
-already owns a license.
+YourKit Java Profiler has three modes of profiling.
+\begin{itemize}
+    \item{\textbf{sampling}: measures the time spent in each function}
+    \item{\textbf{call count}: measures the amount of times individual functions were called}
+    \item{\textbf{tracing}: measures both time spent in functions and call counts}
+\end{itemize}
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l l l }
+        \toprule
+        Mode & Measures Taken & Overhead \\
+        \midrule
+        Sampling & Time spent in individual functions & Moderate \\
+        Call Count & Times individual functions were called & Low \\
+        Tracing & Both time spent and call counts of functions & High \\
+        \bottomrule
+    \end{tabular}
+    \caption{Profiling modes of YourKit Java Profiler}
+    \label{tab:profiler-modes}
+\end{table}
+
+When using the tracing mode, we also have to opportunity to turn
+\textbf{adaptive tracing} on, which ignores measuring trivially fast functions,
+reducing the potential overhead it might cause.
 
 After installing the profiler, I also had to install its Eclipse plugin, so I
 could configure the profiler and start profiling of the software in Eclipse.
@@ -227,6 +251,15 @@ could configure the profiler and start profiling of the software in Eclipse.
 \caption{YourKit Java Profiler in action}
 \label{fig:yourkit-profiler}
 \end{figure}
+
+The profiler lets us see the call tree of the profiled software or a list of its
+called functions ordered by the time spent in them. It also has a "hot spots"
+mode, which highlights the costliest functions. For each function, we can also
+check their backtraces, their callees, and a merged callee list, showing
+in-depth information about its callees.
+
+The above figure shows such a merged callee list of a function highlighted in
+the "hot spots" mode.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
