@@ -253,13 +253,13 @@ could configure the profiler and start profiling of the software in Eclipse.
 \end{figure}
 
 The profiler lets us see the call tree of the profiled software or a list of its
-called functions ordered by the time spent in them. It also has a "hot spots"
+called functions ordered by the time spent in them. It also has a ``hot spots''
 mode, which highlights the costliest functions. For each function, we can also
 check their backtraces, their callees, and a merged callee list, showing
 in-depth information about its callees.
 
 The above figure shows such a merged callee list of a function highlighted in
-the "hot spots" mode.
+the ``hot spots'' mode.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
@@ -576,7 +576,7 @@ The suspicious part was the ratio of the time spent in functions called by the
 of time spent in the \texttt{getInferredType} function was roughly the same (
 77\% and 76\%, respectively).
 
-My first suspicion was that \texttt{Expression} objects are never the "same",
+My first suspicion was that \texttt{Expression} objects are never the ``same'',
 so two \texttt{Expression}s with the same content evalute to two different
 hashes, and my cache always misses.
 
