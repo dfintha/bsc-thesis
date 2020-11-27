@@ -585,25 +585,49 @@ counting function calls along with time spent with them, which may seem like the
 best way to profile software, but this mode comes with a major slowdown, making
 it harder to perform the profiling workflow.
 
-The results of trace mode profiling have proven my suspicion false. The
-\texttt{getType} function itself was called \textbf{13346 times}, however its
-callees had smaller call counts. Below is the callee list of with call counts
-included.
-
 \begin{table}[ht]
     \footnotesize
     \centering
-    \begin{tabular}{ l c c }
+    \begin{tabular}{ l c c c }
         \toprule
-        Function & Time (\%)& Count \\
+        Function & Time (\%) & Count & Count (\%) \\
         \midrule
-        EMFTypeInferrer.getInferredType & 97\% & 121 \\
-        EMFTypeInferrer.getDeclaredType & 3\% & 2245 \\
+        (total calls to getType) & 100\% & 13346 & 100\% \\
+        EMFTypeInferrer.getInferredType & 97\% & 121 & 0.009\% \\
+        EMFTypeInferrer.getDeclaredType & 3\% & 2245 & 0.168\% \\
         \bottomrule
     \end{tabular}
     \caption{Time and call count of callees of \texttt{getType} with my first solution}
     \label{tab:first-solution-call-counts}
 \end{table}
+
+During a tracing profiling session with the original source code, the following
+counts were measured.
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l c c c }
+        \toprule
+        Function & Time (\%) & Count & Count (\%) \\
+        \midrule
+        (total calls to getType) & 100\% & 24733 & 100\% \\
+        EMFTypeInferrer.getInferredType & 97\% & 276 & 0.01\% \\
+        EMFTypeInferrer.getDeclaredType & 3\% & 24731 & 99.99\% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Time and call count of callees of \texttt{getType} with the original source}
+    \label{tab:first-solution-call-counts}
+\end{table}
+
+Please note, that during the measurement of the original source, the minimal
+difference between the amount of \texttt{getType} and \texttt{getDeclaredType}
+call counts may be attributed to the termination of the profiling session, while
+an Xtext validation process was still in progress.
+
+The results of these trace mode profilings have proven my suspicion partially
+false. The most part of the \texttt{getType} function was still spent in
+\texttt{getInferredType}, but my cache helped avoid some repeated calculations.
 
 \subsection{Test the functional correctness of the solution}
 %% TODO: Run tests, write down test results
