@@ -103,19 +103,16 @@ to the developers of VIATRA, so my fix could be included in its next release.
 % --- CONTENT ---------------------------------------------------------------- %
 
 \chapter{Introduction}
-\section{Introduction to VIATRA Query}
-\subsection{The VIATRA plugins}
+\section{The VIATRA framework}
 VIATRA (VIsual Automated model TRAnsformations) is an open-source project backed
 by the Eclipse Foundation, which integrates into the Eclipse development
 environment, providing functionalities like obfuscation, transformation, and
 query of models.
 
 In my thesis, I worked with the VIATRA Query component, which is a tool for
-writing and executing queries on models.
-
-During the thesis I won't install VIATRA as an Eclipse package, but build parts
-of it (the query engine) from source, so I can debug and modify its code, and
-omit additional functionality, that I won't need.
+writing and executing queries on models. During my work, instead of installing
+the whole VIATRA framework, I'll only compile and run the Query component and
+its dependencies.
 
 \begin{figure}[ht]
 \centering
@@ -124,16 +121,20 @@ omit additional functionality, that I won't need.
 \label{fig:eclipse-viatra}
 \end{figure}
 
-\subsection{VIATRA Query Language (VQL)}
-In VIATRA Query, we can write patterns that are matched on a loaded model. This
-is done through a powerful domain-specific language (DSL) called the VIATRA
+\section{VIATRA Query Language (VQL)}
+\subsection{Pattern matching on models}
+
+In VIATRA Query, we can write such patterns that are matched on a loaded model.
+This is done through a powerful domain-specific language (DSL) called the VIATRA
 Query Language (VQL). The VIATRA Query plugins provide an editor with proper
 syntax highlighting to make writing patterns easier.
 
+\subsection{Main language elements}
 Pattern syntax resembles Prolog in a way, that instead of writing functions, we
 write statements, which are evaluated. The engine will try to calculate each
 matching dataset for the pattern.
 
+\subsubsection{Writing and re-using patterns}
 \begin{lstlisting}[frame=single]
 pattern grandparentOf(grandchild : Person, grandparent : Person) {
     Person.parent(grandchild, parent);
@@ -161,7 +162,8 @@ pattern grandparentOf(grandchild : Person, grandparent : Person) {
 }
 \end{lstlisting}
 
-The last language feature I'll talk about is aggregation. You can use
+\subsubsection{Pattern aggregation}
+The other language feature I'll talk about is aggregation. You can use
 aggregators for numeric results like \textbf{count}, \textbf{max}, \textbf{min},
 and \textbf{sum}. In this snippet, the underscore means a parameter that is not
 used in our pattern.
@@ -187,6 +189,8 @@ pattern bothParentAndGrandparent(person : Person, parent : Person) {
     find grandparentOf(person, parent);
 }
 \end{lstlisting}
+
+\section{The Xtext language framework}
 
 \section{Work environment}
 \subsection{Eclipse Platform for VIATRA development}
@@ -223,20 +227,13 @@ could configure the profiler and start profiling of the software in Eclipse.
 
 \chapter{Finding the cause of the editor slowdown}
 \section{Problem description}
-Users have complained, that the editor severely slows down during VQL pattern
-editing, while working larger or more complex queries. To prove this statement,
-I had to get a query that is both known to be slow and is correct. Fortunately,
-there is an open-source VIATRA project, which contains a file, which causes
-severe slowdowns, although, this generated file was not correct.
 
-To create a test environment, I took that file, and fixed it in a new query
-project, providing myself a clean slate for testing. The resulting file was over
-5000 lines long and had a numerous amount of patterns referencing each other.
-Editing this file caused 5-6 second hangups even with a moderately strong
-computer.
+\section{Creating a test candidate}
+
+\section{Manual testing}
 
 \section{Profiling the query language editor}
-\subsection{The profiling workflow}
+\subsection{Declaring a profiling workflow}
 First of all, I had to create a profiling workflow, which describes the steps
 taken to profile the software. Following a fixed workflow ensures that snapshots
 will not contain unrelated parts of the software execution, and that snapshots
@@ -337,19 +334,13 @@ took 67\% of the total run time.
     \label{tab:postparse-no-auto-update}
 \end{table}
 
-\section{Conclusion}
+\subsection{Conclusion}
 In conclusion, metamodel updates are very costly, and even though turning
 automatic updates off does save some time, these updates still happen
-frequently, and should be optimized. My next step was to understand the code
+frequently and should be optimized. My next step was to understand the code
 responsible for type inference, and look for opportunities to optimize it.
 
-My choice of optimization is implementing a cache for the
-\texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
-Since it takes a large part of the run time (33\% without automatic update,
-and 75\% with it), the speedup should be significant.
-
-\chapter{Optimizing query metamodel generation}
-\section{The Xtext language framework}
+\subsection{The Xtext validation process}
 The VIATRA Query Language was written using the Xtext language framework, which
 is an effective tool for writing programming and domain-based languages. This
 framework provides a proper environment to work with our language in Eclipse,
@@ -375,6 +366,14 @@ most of these variables have a \textbf{declared type}, some of them do not, and
 VIATRA Query has to \textbf{infer their types} based on the context they reside
 in.
 
+\section{Pinpointing the critical part}
+
+My choice of optimization is implementing a cache for the
+\texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
+Since it takes a large part of the run time (33\% without automatic update,
+and 75\% with it), the speedup should be significant.
+
+\chapter{Optimizing query metamodel generation}
 \section{Implementing a type inferrer cache}
 \subsection{Inspecting the original functionality}
 During the type inference process, \texttt{getJvmType} is called numerous times,
@@ -566,20 +565,31 @@ included.
     \label{tab:first-solution-call-counts}
 \end{table}
 
+\subsection{Test the functional correctness of the solution}
+
 \subsection{Conclusion}
-If we look at the previous implementation of \texttt{getType},
-\texttt{getDeclaredType} was always called the same amount of times as
-\texttt{getType} itself, and if it failed,\texttt{getInferredType} was also
-called. With my first solution, the call count of the two functions added
-together (2366) was only 17.7\% of the total call count. This means that 82.3\%
-of times the cache did not miss.
+If we look at the previous implementation of \texttt{getType}, we can see that
+\texttt{getDeclaredType} was called the same amount of times as
+\texttt{getType} itself, but if it failed, we fell back to
+\texttt{getInferredType} After adding the type cache, the call count of the two
+functions added dropped to only 17.7\% of the total call count. This means that
+\textbf{82.3\% of times the cache did not miss}, proving its usefulness.
 
-Even though this change did not cause the significant speedup I've expected,
-it still is a useful addition to the project. As such, I've decided to keep
-these changes, but continue my investigation.
+\section{Partially clearing the type cache}
+\subsection{Optimized update of the query cache}
+Caching the calculated types did accomplish a minor speedup, but the editor
+still hangs up during Xtext validation. To further optimize the process,
+calculated types for expressions may be kept in the cache between changed
+states, too, as long as the meaning of those expression remain the same. This
+could help me avoid further re-calculations of already known types.
 
-\chapter{Applying changes to the main code repository}
-\section{Documenting my changes}
+To make such a change, I had to look for some ways to be informed about the
+changed parts of the query model.
+
+\subsection{Checking for changed parts}
+
+\chapter{Publishing my work}
+\section{Documenting the changes}
 It is just natural, that we would document the changes we've made to the users,
 even if it's not a functional change. The VIATRA documentation is written in
 asciidoc format, and each release has its own changelog.
@@ -634,7 +644,7 @@ Change-Id: I0000000000000000000000000000000000000000
 Signed-off-by: Dénes Fintha <denes.fintha@gmail.com>
 \end{lstlisting}
 
-\section{Asking for code review}
+\section{Code review}
 Before any code could be integrated to the mainstream VIATRA source, peer review
 must be conducted. The Eclipse Foundation uses Gerrit to do so, which is a
 web-based code review tool.
@@ -652,6 +662,13 @@ commit before it can be integrated.
 \caption{The Gerrit Code Review tool}
 \label{fig:gerrit}
 \end{figure}
+
+\section{Integrating changes to the next VIATRA version}
+
+\chapter{Summary}
+%% TODO: Summarize work
+
+\section{Improvement opportunities}
 
 % ---------------------------------------------------------------------------- %
 
