@@ -358,6 +358,8 @@ calling the \texttt{IDerivedStateComputer.installDerivedState} function in the
 Xtext framework, which is responsible for producing the current state of our
 query.
 
+\section{Implementing a type inferrer cache}
+\subsection{Caching computed results}
 In VQL, declaring the types of parameters and variables is not mandatory. As
 such, during the production of a model state, the framework has to infer the
 types of entities that do not have an explicitly declared type. During this
@@ -365,6 +367,10 @@ process, \texttt{getJvmType} is called multiple times. Let us see, how this
 function works.
 
 \begin{lstlisting}[language=java]
+/**
+ * @since 1.3
+ */
+@Override
 public IInputKey getType(Expression ex) {
     final IInputKey declaredType = getDeclaredType(ex);
     if (declaredType != null) {
@@ -374,6 +380,12 @@ public IInputKey getType(Expression ex) {
     }
 }
 
+//...
+
+/**
+ * @since 1.3
+ */
+@Override
 public JvmTypeReference getJvmType(Expression ex, EObject context) {
     return typeSystem.toJvmTypeReference(getType(ex), context);
 }
@@ -384,14 +396,156 @@ The profiling session showed us that we spend most of the time in the
 function, which actually does a costly type calculation, and does so repeatedly.
 This looks like a good candidate for some caching mechanism.
 
-\section{Implementing a type inferrer cache}
-\subsection{Adding result caching}
-\subsection{Clearing the cache when it becomes invalid}
-\section{Comparing the optimized state with the original one}
-\subsection{Profiling results}
+My first approach was adding a cache to the \texttt{AbstractTypeInferrer} class,
+storing the types (\texttt{IInputKey}) of \texttt{Expression} objects. I thought
+this cache would be invalidated at the start of each validation process. As
+such.
+
+The following changes were made to the \texttt{AbstractTypeInferrer} class.
+
+\begin{lstlisting}[language=java]
+private HashMap<Expression, IInputKey> typeCache;
+
+// ...
+
+/**
+ * @since 1.3
+ */
+@Override
+public IInputKey getType(Expression ex) {
+    if (typeCache == null)
+        typeCache = new HashMap<>();
+
+    if (!typeCache.containsKey(ex)) {
+        final IInputKey declaredType = getDeclaredType(ex);
+        if (declaredType != null) {
+            typeCache.put(ex,  declaredType);
+        } else {
+            typeCache.put(ex, getInferredType(ex));
+        }
+    }
+    return typeCache.get(ex);
+}
+
+// ...
+
+/**
+ * @since 2.5
+ */
+public void clearCache() {
+    typeCache = new HashMap<>();
+}
+\end{lstlisting}
+
+Along with the caching, I also had to perform cache invalidation at the
+beginning of each validation process. To do so, I've added cache clearing to the
+start of the \texttt{installDerivedState} function.
+
+\begin{lstlisting}[language=java]
+@Override
+public void installDerivedState(DerivedStateAwareResource resource, boolean preIndexingPhase) {
+    feedback.clearMarkers(resource, IErrorFeedback.JVMINFERENCE_ERROR_TYPE);
+    if (typeInferrer instanceof AbstractTypeInferrer)
+        ((AbstractTypeInferrer) typeInferrer).clearCache();
+
+    calculateDerivedVariableObjects(resource);
+    super.installDerivedState(resource, preIndexingPhase);
+    if (!preIndexingPhase) {
+        calculateAggregateTypes(resource);
+    }
+}
+\end{lstlisting}
+
+\subsection{Comparing the optimized state with the original one}
+After making these changes, I did another profiling session, with the same
+workflow described above. Seemingly my first solution did not fully accomplish
+my goal, the run time of the validation process remained close to the same. The
+\texttt{XtextDocumentReconcileStrategy.postParse} function still ate up 64\% of
+the runtime (compared to the original 67\%), but the type inference code became
+slightly faster.
+
+Below is a table with comparison between the original source code (with
+automatic updates turned off) and my solution.
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l c c }
+        \toprule
+        Function & Time (\%), Original & Time (\%), Changed \\
+        \midrule
+        XtextDocumentReconcileStrategy.postParse & 100\% & 100\% \\
+        EcoreUtil2.resolveLazyCrossReferences & 99\% & 95\% \\
+        BatchLinkableResource.resolveLazyCrossReferences & 99\% & 95\% \\
+        BatchLinkingService.resolveBatched & 97\% & 84\% \\
+        AbstractBatchTypeResolver.resolveTypes & 97\% & 84\% \\
+        CachingBatchTypeResolver.doResolveTypes & 97\% & 84\% \\
+        OnChangeEvictingCache.get & 95\% & 70\% \\
+        CachingBatchTypeResolver\$1.get & 95\% & 70\% \\
+        CachingBatchTypeResolver\$1.get & 95\% & 70\% \\
+        DefaultBatchTypeResolver.getTypeResolver & 95\% & 70\% \\
+        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 92\% & 58\% \\
+        BatchLinkableResource.getContents & 92\% & 58\% \\
+        DerivedStateAwareResource.installDerivedState & 92\% & 58\% \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 92\% & 58\% \\
+        JvmModelAssociator.installDerivedState & 92\% & 57\% \\
+        JvmModelAssociator\$1.run & 91\% & 54\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 52\% & 48\% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of run time with the unmodified code and my first solution}
+    \label{tab:first-solution-comparison}
+\end{table}
+
+The suspicious part was the ratio of the time spent in functions called by the
+\texttt{getType} function. The purpose of my cache was minimizing calls to the
+\texttt{getInferredType} function, which took the most time. However, the amount
+of time spent in the \texttt{getInferredType} function was roughly the same (
+77\% and 76\%, respectively).
+
+My first suspicion was that \texttt{Expression} objects are never the "same",
+so two \texttt{Expression}s with the same content evalute to two different
+hashes, and my cache always misses.
+
+To make sure, I did another profiling, now in trace mode. Trace mode means
+counting function calls along with time spent with them, which may seem like the
+best way to profile software, but this mode comes with a major slowdown, making
+it harder to perform the profiling workflow.
+
+The results of trace mode profiling have proven my suspicion false. The
+\texttt{getType} function itself was called \textbf{13346 times}, however its
+callees had smaller call counts. Below is the callee list of with call counts
+included.
+
+\begin{table}[ht]
+    \footnotesize
+    \centering
+    \begin{tabular}{ l c c }
+        \toprule
+        Function & Time (\%)& Count \\
+        \midrule
+        EMFTypeInferrer.getInferredType & 97\% & 121 \\
+        EMFTypeInferrer.getDeclaredType & 3\% & 2245 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of run time with the unmodified code and my first solution}
+    \label{tab:first-solution-call-counts}
+\end{table}
+
+\subsection{Conclusion}
+If we look at the previous implementation of \texttt{getType},
+\texttt{getDeclaredType} was always called the same amount of times as
+\texttt{getType} itself, and if it failed,\texttt{getInferredType} was also
+called. With my first solution, the call count of the two functions added
+together (2366) was only 17.7\% of the total call count. This means that 82.3\%
+of times the cache did not miss.
+
+Even though this change did not cause the significant speedup I've expected,
+it still is a useful addition to the project. As such, I've decided to keep
+these changes, but continue my investigation.
 
 \chapter{Applying changes to the main code repository}
-\section{Documenting our changes}
+\section{Documenting my changes}
 It is just natural, that we would document the changes we've made to the users,
 even if it's not a functional change. The VIATRA documentation is written in
 asciidoc format, and each release has its own changelog.
