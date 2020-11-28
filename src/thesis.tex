@@ -110,9 +110,7 @@ environment, providing functionalities like obfuscation, transformation, and
 query of models.
 
 In my thesis, I worked with the VIATRA Query component, which is a tool for
-writing and executing queries on models. During my work, instead of installing
-the whole VIATRA framework, I'll only compile and run the Query component and
-its dependencies.
+writing and executing queries on models.
 
 \begin{figure}[ht]
 \centering
@@ -175,6 +173,8 @@ pattern grandparentAmount(child : Person, amount) {
 }
 \end{lstlisting}
 
+\pagebreak
+
 \subsection{Formulating constraints}
 One can also provide model validation, by writing \textbf{constraint patterns}.
 This raises an error if VIATRA finds any matches to that pattern. This can be
@@ -221,6 +221,12 @@ plugins, and add the VIATRA source code to my environment manually.
 The detailed steps on how to do this is is written down on the VIATRA project
 website\cite{ujhelyi_harmath_david_nagy_hegedus_2019}.
 
+During my work, instead of installing the whole VIATRA framework, I've only
+compile and run the relevant components of VIATRA Query their dependencies,
+closing any unrelated functionalities, so they won't distract my investigation.
+
+\pagebreak
+
 \subsection{YourKit Java Profiler}
 Since the main issue we have to investigate is a slowdown, I had to use a
 profiler software.
@@ -266,6 +272,8 @@ could configure the profiler and start profiling of the software in Eclipse.
 \caption{YourKit Java Profiler in action}
 \label{fig:yourkit-profiler}
 \end{figure}
+
+\pagebreak
 
 The profiler lets us see the call tree of the profiled software or a list of its
 called functions ordered by the time spent in them. It also has a ``hot spots''
@@ -520,6 +528,8 @@ public void clearCache() {
 // ...
 \end{lstlisting}
 
+\pagebreak
+
 \begin{lstlisting}[language=java]
 // ...
 
@@ -590,6 +600,8 @@ My first suspicion was that \texttt{Expression} objects are never the ``same'',
 so two \texttt{Expression}s with the same content evalute to two different
 hashes, and my cache always misses.
 
+\pagebreak
+
 To make sure, I did another profiling, now in trace mode. Trace mode means
 counting function calls along with time spent with them, which may seem like the
 best way to profile software, but this mode comes with a major slowdown, making
@@ -611,8 +623,9 @@ it harder to perform the profiling workflow.
     \label{tab:first-solution-call-counts}
 \end{table}
 
-During a tracing profiling session with the original source code, the following
-counts were measured.
+In previous profiling sessions of the original code, I've used the sampling
+mode. To compare the results, I also had to perform a tracing profiling session
+using the original source. The results can be seen below.
 
 \begin{table}[ht]
     \footnotesize
@@ -650,6 +663,8 @@ If we look at the previous implementation of \texttt{getType}, we can see that
 functions added dropped to only 17.7\% of the total call count. This means that
 \textbf{82.3\% of times the cache did not miss}, proving its usefulness.
 
+\pagebreak
+
 \section{Partially clearing the type cache}
 \subsection{Optimized update of the query cache}
 Caching the calculated types did accomplish a minor speedup, but the editor
@@ -675,11 +690,17 @@ It is just natural, that we would document the changes we've made to the users,
 even if it's not a functional change. The VIATRA documentation is written in
 asciidoc format, and each release has its own changelog.
 
+These documentation files are stored in the
+\texttt{org.eclipse.viatra.documentation.help} package. Documenting my work was
+as simple as adding a new line to the ``New and Noteworthy'' section of the
+release documentation for the upcoming VIATRA version (2.5).
+
 \section{Opening a bug tracker ticket}
 The Eclipse Foundation uses Bugzilla as its bug tracker. Each known bug has a
 ticket assigned, and this ticket has a unique identifier. Tickets contain
 a detailed description of the issue, and some other metadata, such as product,
-version, importance, and target milestone.
+version, importance, and target milestone. These tickets then can be assigned to
+developers.
 
 For this thesis work, a new Bugzilla ticket was introduced:
 Bug 569178 -- Improve language tooling performance.
@@ -691,8 +712,7 @@ Bug 569178 -- Improve language tooling performance.
 \label{fig:bugzilla}
 \end{figure}
 
-These tickets can be assigned to developers, and have their status tracked, so
-the overseeing the flow of work would be trivial.
+\pagebreak
 
 \section{Keeping the changes in version control}
 VIATRA source code is stored in a Git repository, hosted by the Eclipse
@@ -724,6 +744,8 @@ calculating the types of equal expression.
 Change-Id: I0000000000000000000000000000000000000000
 Signed-off-by: Dénes Fintha <denes.fintha@gmail.com>
 \end{lstlisting}
+
+\pagebreak
 
 \section{Code review}
 Before any code could be integrated to the mainstream VIATRA source, peer review
