@@ -289,10 +289,20 @@ the ``hot spots'' mode.
 %% TODO: Explain problems
 
 \section{Creating a test candidate}
-%% TODO: Describe the process
+To begin my work, I had to create a test project with a query, which
+consistently struggles with such performance issues. The VIATRA-Generator
+project\cite{github-viatra-generator} did contain a generated query file, which
+had more than enough issues to slow down the workflow.
 
-\section{Manual testing}
-%% TODO: Describe the process
+After having a proper candidate, I had to create a VIATRA project around it, and
+remove duplicated pattern code from it, which existed because of its generated
+nature. The finished query did not contain any errors, but caused massive
+slowdowns -- perfect for my cause.
+
+Before measuring anything with a profiler, I've conducted some manual testing,
+which consisted of smaller editing sessions. During these tests I've noticed,
+that the critical part of the editing session is during the Xtext validation
+process, which causes a 5-10 second hangup after a few edits in the file.
 
 \section{Profiling the query language editor}
 \subsection{Declaring a profiling workflow}
