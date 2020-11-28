@@ -673,12 +673,12 @@ calculated types for expressions may be kept in the cache between changed
 states, too, as long as the meaning of those expression remain the same. This
 could help me avoid further re-calculations of already known types.
 
-To make such a change, I had to look for a more granulated cache than Xtext's
-\texttt{OnChangeEvictingCache}, which discards cached information when the file
-is changed.
-
-\subsection{Using a more granulated cache}
-%% TODO: Granulated change check?
+\subsection{Looking for a more fine-grained cache}
+To make such a change, I had to look for a more fine-grained cache than Xtext's
+\texttt{OnChangeEvictingCache}, which caches complete files, and discards cached
+information when the file is changed. But sadly, after spending hours looking
+for such solution, I did not find any. On a developer forum, it was also
+explicitly stated to be nonexistent \cite{xtext-fine-grained-caching}.
 
 \section{Conclusion}
 %% TODO: Conclude my work
