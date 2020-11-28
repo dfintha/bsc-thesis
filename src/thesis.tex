@@ -192,7 +192,23 @@ pattern bothParentAndGrandparent(person : Person, parent : Person) {
 \end{lstlisting}
 
 \section{The Xtext language framework}
-%% TODO: Explain what Xtext is, how it works
+VQL was implemented using the Xtext framework. This framework is an effective
+tool for developing programming and domain-based languages.
+
+For the languages implemented using it, the Xtext framework provides the
+following services\cite{xtext}.
+
+\begin{itemize}
+    \item{language parser}
+    \item{linker}
+    \item{typechecker}
+    \item{editing support in any editor supporting the Language Server Protocol}
+\end{itemize}
+
+It should also be noted, that some internal parts of VQL were implemented using
+the Xtend language, which is also part of the Xtext project, implemented in
+Xtext itself. Xtend is a Java dialect, with some modern language elements, such
+as macros, lambdas, and operator overloading\cite{xtend}.
 
 \section{Work environment}
 \subsection{Eclipse Platform for VIATRA development}
@@ -379,11 +395,6 @@ frequently and should be optimized. My next step was to understand the code
 responsible for type inference, and look for opportunities to optimize it.
 
 \subsection{The Xtext validation process}
-The VIATRA Query Language was written using the Xtext language framework, which
-is an effective tool for writing programming and domain-based languages. This
-framework provides a proper environment to work with our language in Eclipse,
-including syntax highlighting.
-
 To validate our query, the Xtext framework parses the query written in VQL
 (partially utilizing VIATRA's code), creates a document object model (DOM) of
 it, and finally, runs checks on said model. The process of building this DOM is
@@ -754,9 +765,8 @@ commit before it can be integrated.
 
 \listoffigures\addcontentsline{toc}{chapter}{\listfigurename}
 \listoftables\addcontentsline{toc}{chapter}{\listtablename}
-
 \addcontentsline{toc}{chapter}{\bibname}
 \bibliography{bib/mybib}
-
 \label{page:last}
+
 \end{document}
