@@ -121,19 +121,25 @@ writing and executing queries on models.
 
 \section{VIATRA Query Language (VQL)}
 \subsection{Pattern matching on models}
-%% TODO: Explain pattern matching on models
+An effective way of validating models is declaring patterns indicating incorrect
+models. For example, if our model represents a family tree, we may look for
+circles.
 
 In VIATRA Query, we can write such patterns that are matched on a loaded model.
-This is done through a powerful domain-specific language (DSL) called the VIATRA
-Query Language (VQL). The VIATRA Query plugins provide an editor with proper
-syntax highlighting to make writing patterns easier.
+This is done via a powerful domain-specific language (DSL) called the VIATRA
+Query Language (VQL). The VIATRA Query Eclipse plugins provide an editor with
+proper syntax highlighting and code completion to make writing patterns easier.
 
 \subsection{Main language elements}
 Pattern syntax resembles Prolog in a way, that instead of writing functions, we
-write statements, which are evaluated. The engine will try to calculate each
-matching dataset for the pattern.
+write statements, which are solved on our model. The engine will try to
+match the pattern on the model, and show each match in it.
 
 \subsubsection{Writing and re-using patterns}
+Patterns begin with the \texttt{pattern} keyword, followed by the name of our
+pattern, and its parameter list. The body of a pattern contains statements,
+which can use existing parameters, and introduce new ones.
+
 \begin{lstlisting}[frame=single]
 pattern grandparentOf(grandchild : Person, grandparent : Person) {
     Person.parent(grandchild, parent);
@@ -142,11 +148,14 @@ pattern grandparentOf(grandchild : Person, grandparent : Person) {
 \end{lstlisting}
 
 In this pattern, we declare a grandparent of a person, as a parent of one of its
-parents. This will match each grandparent-grandchild relation.
+parents. The \texttt{grandchild} and \texttt{grandparent} parameters are
+explicitly given, while the \texttt{parent} parameter is introduced by the first
+\texttt{Person.parent} statement. This simple pattern will match each
+grandparent-grandchild relation in our model.
 
-Patterns can have multiple declarations, and use other patterns.
-If we separately track mothers and fathers instead of just parents, our patterns
-may look like this.
+Patterns can have multiple declarations, and match other patterns by using the
+\texttt{find} keyword. If we separately track mothers and fathers instead of
+just parents, our patterns may look like the following.
 
 \begin{lstlisting}[frame=single]
 pattern parentOf(child : Person, parent : Person) {
@@ -161,19 +170,22 @@ pattern grandparentOf(grandchild : Person, grandparent : Person) {
 }
 \end{lstlisting}
 
+\pagebreak
+
 \subsubsection{Pattern aggregation}
-The other language feature I'll talk about is aggregation. You can use
+Another language feature frequently used is aggregation. You can use
 aggregators for numeric results like \textbf{count}, \textbf{max}, \textbf{min},
-and \textbf{sum}. In this snippet, the underscore means a parameter that is not
-used in our pattern.
+and \textbf{sum}. This snippet counts the amount of grandparents a person has.
+
+Any parameter with a single underscore denotes it as a known unused parameter.
+In this example, we don't use the \texttt{Person} entities of the grandparents
+for anything other than counting them.
 
 \begin{lstlisting}[frame=single]
 pattern grandparentAmount(child : Person, amount) {
     amount == count find grandparentOf(child, _);
 }
 \end{lstlisting}
-
-\pagebreak
 
 \subsection{Formulating constraints}
 One can also provide model validation, by writing \textbf{constraint patterns}.
@@ -224,8 +236,6 @@ website\cite{ujhelyi_harmath_david_nagy_hegedus_2019}.
 During my work, instead of installing the whole VIATRA framework, I've only
 compile and run the relevant components of VIATRA Query their dependencies,
 closing any unrelated functionalities, so they won't distract my investigation.
-
-\pagebreak
 
 \subsection{YourKit Java Profiler}
 Since the main issue we have to investigate is a slowdown, I had to use a
@@ -285,8 +295,6 @@ The above figure shows such a merged callee list of a function highlighted in
 the ``hot spots'' mode.
 
 \chapter{Finding the cause of the editor slowdown}
-\section{Problem description}
-%% TODO: Explain problems
 
 \section{Creating a test candidate}
 To begin my work, I had to create a test project with a query, which
@@ -295,14 +303,14 @@ project\cite{github-viatra-generator} did contain a generated query file, which
 had more than enough issues to slow down the workflow.
 
 After having a proper candidate, I had to create a VIATRA project around it, and
-remove duplicated pattern code from it, which existed because of its generated
-nature. The finished query did not contain any errors, but caused massive
-slowdowns -- perfect for my cause.
+remove duplicated pattern code, which existed because of the generated nature
+of this query. The finished query did not contain any errors, but caused massive
+slowdowns -- it was perfect for my cause.
 
 Before measuring anything with a profiler, I've conducted some manual testing,
 which consisted of smaller editing sessions. During these tests I've noticed,
 that the critical part of the editing session is during the Xtext validation
-process, which causes a 5-10 second hangup after a few edits in the file.
+process, which caused 5 to 10 second hangups after a few edits in the file.
 
 \section{Profiling the query language editor}
 \subsection{Declaring a profiling workflow}
@@ -318,9 +326,9 @@ will represent the same steps taken.
     \item{Navigate to a pattern, which we will manually duplicate.}
     \item{\textbf{Start profiling in the profiler software.}}
     \item{Manually type in the pattern again, with a different name.}
+    \item{Wait for the Xtext validation process to finish.}
     \item{\textbf{Stop profiling in the profiler software, and save a snapshot.}}
-    \item{Discard the changes we made in the file.}
-    \item{Quit Eclipse.}
+    \item{Quit Eclipse, discarding any changes we made in the file.}
 \end{enumerate}
 
 \subsection{Profiling with default settings}
@@ -406,7 +414,6 @@ took 67\% of the total run time.
     \label{tab:postparse-no-auto-update}
 \end{table}
 
-\subsection{Conclusion}
 In conclusion, metamodel updates are very costly, and even though turning
 automatic updates off does save some time, these updates still happen
 frequently and should be optimized. My next step was to understand the code
@@ -432,9 +439,6 @@ During model building, the types of variables must be interpreted, and while
 most of these variables have a \textbf{declared type}, some of them do not, and
 VIATRA Query has to \textbf{infer their types} based on the context they reside
 in.
-
-\section{Pinpointing the critical part}
-%% TODO: Introduce solution
 
 My choice of optimization is implementing a cache for the
 \texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
@@ -520,44 +524,9 @@ public IInputKey getType(Expression ex) {
 \end{lstlisting}
 
 \subsection{Clearing the cache}
-Along with the caching, I also had to perform cache invalidation at the
-beginning of each validation process. To do so, I've added a function to clear
-the cache in \texttt{AbstractTypeInferrer}, which is called at the start of the
-\texttt{installDerivedState} function.
-
-\begin{lstlisting}[language=java]
-// ...
-
-/**
- * @since 2.5
- */
-public void clearCache() {
-    typeCache = new HashMap<>();
-}
-
-// ...
-\end{lstlisting}
-
-\pagebreak
-
-\begin{lstlisting}[language=java]
-// ...
-
-@Override
-public void installDerivedState(DerivedStateAwareResource resource, boolean preIndexingPhase) {
-    feedback.clearMarkers(resource, IErrorFeedback.JVMINFERENCE_ERROR_TYPE);
-    if (typeInferrer instanceof AbstractTypeInferrer)
-        ((AbstractTypeInferrer) typeInferrer).clearCache();
-
-    calculateDerivedVariableObjects(resource);
-    super.installDerivedState(resource, preIndexingPhase);
-    if (!preIndexingPhase) {
-        calculateAggregateTypes(resource);
-    }
-}
-
-// ...
-\end{lstlisting}
+Since the \texttt{installDerivedState} function always throws away the previous
+\texttt{AbstractTypeInferrer} instance, which contains our cache, there is no
+need for additional cache clearing.
 
 \subsection{Comparing the optimized state with the original one}
 After making these changes, I did another profiling session, with the same
@@ -662,9 +631,6 @@ The results of these trace mode profilings have proven my suspicion partially
 false. The most part of the \texttt{getType} function was still spent in
 \texttt{getInferredType}, but my cache helped avoid some repeated calculations.
 
-\subsection{Test the functional correctness of the solution}
-%% TODO: Run tests, write down test results
-
 \subsection{Conclusion}
 If we look at the previous implementation of \texttt{getType}, we can see that
 \texttt{getDeclaredType} was called the same amount of times as
@@ -675,24 +641,32 @@ functions added dropped to only 17.7\% of the total call count. This means that
 
 \pagebreak
 
-\section{Partially clearing the type cache}
-\subsection{Optimized update of the query cache}
+\section{Fine-grained type caching}
 Caching the calculated types did accomplish a minor speedup, but the editor
-still hangs up during Xtext validation. To further optimize the process,
-calculated types for expressions may be kept in the cache between changed
-states, too, as long as the meaning of those expression remain the same. This
-could help me avoid further re-calculations of already known types.
+still hangs up during Xtext validation.
 
-\subsection{Looking for a more fine-grained cache}
-To make such a change, I had to look for a more fine-grained cache than Xtext's
-\texttt{OnChangeEvictingCache}, which caches complete files, and discards cached
-information when the file is changed. But sadly, after spending hours looking
-for such solution, I did not find any. On a developer forum, it was also
-explicitly stated to be nonexistent\cite{xtext-fine-grained-caching}.
+The Xtext framework caches information during file processing in a cache, but as
+soon as the file is changed, the cache is evicted, and this information is lost.
+My additional type cache helped keep some values cached \textbf{during this
+processing, avoiding re-calculation of the same type in one process}, but some
+of the values still need to be recalculated.
 
-\section{Conclusion}
-%% TODO: Conclude my work
-%% TODO: Add diagram for run time changes
+To further optimize the process, these calculated types for expressions could
+be kept in a cache that persists between changed states, as long as the meaning
+of those expression remain the same. This could result in an additional
+significant speedup.
+
+Looking for such a cache mechanism, I studied the Xtext framework documentation
+for a cache other than \texttt{OnChangeEvictingCache}, but on developer forums,
+it was explicitly stated to be nonexistent\cite{xtext-fine-grained-caching}. As
+such, I had to look for another solutions.
+
+\section{Improving type inference performance}
+%% TODO
+%% TypeInformation.(getType|getAllTypes|getMinimizedTypes)
+%% EMFTypeInferrer.collectConstraints
+%%   PatternLanguageHelper.getReferencedPatternsTransitive
+TODO
 
 \chapter{Publishing my work}
 \section{Documenting the changes}
@@ -777,21 +751,23 @@ commit before it can be integrated.
 \end{figure}
 
 \section{Integrating changes to the next VIATRA version}
-%% TODO: Describe the integration process
+%% TODO
+%% Integration process
+TODO
 
 \chapter{Summary}
-%% TODO: Summarize work
+This thesis work was centered around investigating a large existing project, and
+finding and fixing performance issues. Although most of the issues originated
+from an external framework, I did manage to achieve a small performance
+increase, which I consider a success.
 
 \section{Improvement opportunities}
-%% TODO: Add improvement opportunities
+%% TODO
+TODO
 
-% ---------------------------------------------------------------------------- %
-
-\chapter*{\koszonetnyilvanitas}\addcontentsline{toc}{chapter}{\koszonetnyilvanitas}
-
-% --- ACKNOWLEDGEMENTS ------------------------------------------------------- %
-
-%% TODO: Add acknowledgements
+\subsection{Fine-grained caching in the Xtext framework}
+%% TODO
+TODO
 
 % ---------------------------------------------------------------------------- %
 
