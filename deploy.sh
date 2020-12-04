@@ -8,3 +8,4 @@ else
     echo "Document compilation successful."
 fi
 popd > /dev/null
+mv pdf/thesis.pdf pdf/thesis-dfintha-performance-analysis.pdf
