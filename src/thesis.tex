@@ -99,16 +99,6 @@ to the developers of VIATRA, so my fix could be included in its next release.
 % --- CONTENT ---------------------------------------------------------------- %
 
 \chapter{Introduction}
-%% TODO
-%% Majdnem minden, amit ide írtál, inkább 2-es fejezetbe való.
-%% Az 1-es jobban hasonlít az absztraktra, csak persze sokkal részletesebb.
-%% Az 1.1 és az 1.2.1 még OK, mint általános beveztő. Utána bedobhatod a problémát
-%% (lassúak a nyelvszolgáltatások), erre példákat is mutathatsz. Számokat,
-%% screenshotokat mutathatsz: ebben a fájlban itt gépelve X másodpercre lefagy az
-%% editor, ami nagyon megakasztja a fejlesztést.
-%% Elmagyarázod érthetően, hogy ez rossz :)
-%% A feladatom az volt hogy...
-%% A dolgozat felépítése a következő: ....
 
 \section{The VIATRA framework}
 VIATRA (VIsual Automated model TRAnsformations) is an open-source project backed
@@ -127,8 +117,8 @@ model-based engineering.
 \label{fig:eclipse-viatra}
 \end{figure}
 
+\pagebreak
 \section{VIATRA Query Language (VQL)}
-\subsection{Pattern matching on models}
 An effective way of validating models is declaring patterns indicating incorrect
 models. For example, if our model represents a family tree, we may look for
 cycles.
@@ -139,96 +129,35 @@ the VIATRA Query Language (VQL). The VIATRA Query Eclipse plugins provide an
 editor with proper syntax highlighting and code completion to make writing
 patterns easier.
 
-\subsection{Main language elements}
-VQL is a datalog dialect. As such, instead of writing functions, we write
-statements, which are solved on our model. The engine will try to match the
-pattern on the model, and show each match in it.
+\section{VQL editor slowdowns}
+The main problem with the VQL editor is, that in some cases it is inexplicably
+slow. During manual tests, some files frequently caused 5 to 10 second hangups
+during pattern editing. This notably happens during a process called ``Xtext
+validation''.
 
-\subsubsection{Writing and re-using patterns}
-Patterns begin with the \texttt{pattern} keyword, followed by the name of our
-pattern, and its parameter list. The body of a pattern contains statements,
-which can use existing parameters, and introduce new ones.
+\chapter{Background}
 
-\begin{lstlisting}[frame=single]
-pattern grandparentOf(grandchild : Person, grandparent : Person) {
-    Person.parent(grandchild, parent);
-    Person.parent(parent, grandparent);
-}
-\end{lstlisting}
+\section{Eclipse plug-in development}
+Eclipse is an integrated development environment (IDE), which can be customized
+with plug-ins. These plug-ins extend the functionality of Eclipse, and can have
+various roles, such as providing support for development in a programming
+language, or integrating the use of an external tool to our workflow.
 
-In this pattern, we declare a grandparent of a person, as a parent of one of its
-parents. The \texttt{grandchild} and \texttt{grandparent} parameters are
-explicitly given, while the \texttt{parent} parameter is introduced by the first
-\texttt{Person.parent} statement. This simple pattern will match each
-grandparent-grandchild relation in our model.
+In my case, VIATRA itself is a bundle of Eclipse plug-ins, providing a query
+development environment with an editor and a code generator for model
+queries\cite{viatra}.
 
-%% TODO:
-%% Aki nem érti, hogy működik a VQL, az ebből a bekezdésből sem fogja megérteni.
-%% Kell utána még egy részletesebb példa: minimum szöveggel, de akár ábrával
-%% megadsz egy példánymodellt néhány Person objektummal, és bemutatod, hogy a
-%% mintának a következő N darab illeszkedése lesz, ahol minden illeszkedés egy
-%% grandchild-grandparent páros.
-%% Ez már elvisz annyit, hogy a diszjunkció és kompozícióról szóló rész lehet új
-%% subsub...section (Pattern disjunction and composition)
+Integration of the YourKit Java Profiler is also done through a plug-in, which
+lets me run the software in profiling mode, and configure the profiler itself
+in Eclipse.
 
-Patterns can have multiple declarations, and match other patterns by using the
-\texttt{find} keyword. If we separately track mothers and fathers instead of
-just parents, our patterns may look like the following.
-
-\begin{lstlisting}[frame=single]
-pattern parentOf(child : Person, parent : Person) {
-    Person.mother(child, parent);
-} or {
-    Person.father(child, parent);
-}
-
-pattern grandparentOf(grandchild : Person, grandparent : Person) {
-    find parentOf(grandchild, parent);
-    find parentOf(parent, grandparent);
-}
-\end{lstlisting}
-
-\pagebreak
-
-\subsubsection{Pattern aggregation}
-Another language feature frequently used is aggregation. You can use
-aggregators for numeric results like \textbf{count}, \textbf{max}, \textbf{min},
-and \textbf{sum}. This snippet counts the amount of grandparents a person has.
-
-Any parameter with a single underscore denotes it as a known unused parameter.
-In this example, we don't use the \texttt{Person} entities of the grandparents
-for anything other than counting them.
-
-\begin{lstlisting}[frame=single]
-pattern grandparentAmount(child : Person, amount) {
-    amount == count find grandparentOf(child, _);
-}
-\end{lstlisting}
-
-%% TODO
-%% Itt be kéne mutatni a check() és eval() elemeket is egy szakaszban,
-%% és mondani, hogy azok a VQL-ben XBase alapúak
-
-\subsection{Formulating constraints}
-One can also provide model validation, by writing \textbf{constraint patterns}.
-This can be done by annotating our validation pattern.
-
-\begin{lstlisting}[frame=single]
-@Constraint(targetEditorId = "org.dfintha.familytree",
-            severity = "error",
-            message = "Person is both a parent and grandparent of someone.",
-            key = {"parent"})
-pattern bothParentAndGrandparent(person : Person, parent : Person) {
-    find parentOf(person, parent);
-    find grandparentOf(person, parent);
-}
-\end{lstlisting}
+\section{Domain-specific modeling and metamodels}
+Domain-specific modeling is a methodology, which uses models to represent
+systems, mostly by using domain-specific languages (DSL). Often these models
+are then subject to code generation, translating the model of a system to a
+program representing that system.
 
 \section{The Xtext language framework}
-%% TODO
-%% Ez is 2-es szakasz, azon belül viszont a VQL-re vonatkozó részletesebb
-%% ismertető elé
-
 VQL was implemented using the Xtext framework. This framework is an effective
 tool for developing programming and domain-based languages.
 
@@ -249,6 +178,7 @@ following services\cite{xtext}.
             \item{outline support}
         \end{itemize}
     }
+    \item{the Xbase expression language library}
 \end{itemize}
 
 It should also be noted, that some internal parts of VQL infrastructure were
@@ -256,10 +186,175 @@ implemented using the Xtend language, which is also part of the Xtext project,
 implemented in Xtext itself. Xtend is a Java dialect, with some modern language
 elements, such as macros, lambdas, and operator overloading\cite{xtend}.
 
-\section{Work environment}
+\section{VQL syntax}
+VQL is a datalog dialect, which means that instead of writing functions, we
+write statements, which are solved on our model. The engine will try to match
+the pattern on the model, and show each match in it.
 
-%% TODO
-%% ez nagyon későre való, nem is a 2-es fejezetbe
+\subsection{Writing patterns}
+Patterns begin with the \texttt{pattern} keyword, followed by the name of our
+pattern, and its parameter list. The body of a pattern contains statements,
+which can use existing parameters, and introduce new ones.
+
+This simple pattern will match each grandparent-grandchild relation in a model,
+which contains \texttt{Node}s, with one parent each.
+
+\begin{lstlisting}[frame=single]
+pattern grandparentOf(grandchild : Node, grandparent : Node) {
+    Node.parent(grandchild, parent);
+    Node.parent(parent, grandparent);
+}
+\end{lstlisting}
+
+We have two \texttt{Node} entities, \texttt{grandchild} and
+\texttt{grandparent}. These come from the parameters of the pattern.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[height=50mm, keepaspectratio]{figures/basic-pattern-explanation-1.png}
+\caption{The \texttt{grandparent} and \texttt{grandchild} entities}
+\label{fig:basic-pattern-explanation-1}
+\end{figure}
+
+The first line of the pattern introduces a new \texttt{Node} entity, called
+\texttt{parent}, which is in a parent relation with the grandchild.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[height=50mm, keepaspectratio]{figures/basic-pattern-explanation-2.png}
+\caption{The \texttt{parent} entity, in parent relation with \texttt{grandchild}}
+\label{fig:basic-pattern-explanation-2}
+\end{figure}
+
+\pagebreak
+Finally, the second line declares a parent relation between \texttt{parent} and
+\texttt{grandparent}, finishing the grandparent pattern.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[height=50mm, keepaspectratio]{figures/basic-pattern-explanation-3.png}
+\caption{Complete grandparent-grandchild pattern}
+\label{fig:basic-pattern-explanation-3}
+\end{figure}
+
+\subsection{Pattern disjunction and composition}
+Patterns can have multiple declarations, and match other patterns by using the
+\texttt{find} keyword.
+
+Let's expand our model: instead of \texttt{Node}s with one parent each, let's
+have \texttt{Person} entities, with a separate mother and father. In this case
+we can use \textbf{pattern disjunction} to match either parent of a
+\texttt{Person}.
+
+\begin{lstlisting}[frame=single]
+pattern parentOf(child : Person, parent : Person) {
+    Person.mother(child, parent);
+} or {
+    Person.father(child, parent);
+}
+\end{lstlisting}
+
+Now we don't have a parent relation, but we do have a pattern, which matches
+every parent of a \texttt{Person}. We can use \textbf{pattern composition} to
+re-use our previously defined pattern(s).
+
+\begin{lstlisting}[frame=single]
+pattern grandparentOf(grandchild : Person, grandparent : Person) {
+    find parentOf(grandchild, parent);
+    find parentOf(parent, grandparent);
+}
+\end{lstlisting}
+
+\subsection{Pattern aggregation}
+Another language feature frequently used is aggregation. You can use
+aggregators for numeric results like \textbf{count}, \textbf{max}, \textbf{min},
+and \textbf{sum}. This snippet counts the amount of grandparents a person has.
+
+Any parameter with a single underscore denotes it as a known unused parameter.
+In this example, we don't use the \texttt{Person} entities of the grandparents
+for anything other than counting them.
+
+\begin{lstlisting}[frame=single]
+pattern grandparentAmount(child : Person, amount) {
+    amount == count find grandparentOf(child, _);
+}
+\end{lstlisting}
+
+\subsection{Checking and evaluating expressions}
+Expression evaluation lets users compute Xbase expressions, allowing calculations.
+
+\begin{lstlisting}[frame=single]
+pattern fullName(person : Person, name) {
+    name == eval(person.firstName + " " + person.lastName);
+}
+\end{lstlisting}
+
+Additional constraints can be introduced with the \texttt{check} keyword. This
+is semantically equivalent to declaring an evaluated expression to be
+\texttt{true}.
+
+\begin{lstlisting}[frame=single]
+pattern isAdult(person : Person) {
+    check(person.age >= 18);
+}
+\end{lstlisting}
+
+\subsection{Formulating constraints}
+One can also provide model validation, by writing \textbf{constraint patterns}.
+This can be done by annotating our validation pattern.
+
+\begin{lstlisting}[frame=single]
+@Constraint(targetEditorId = "org.dfintha.familytree",
+            severity = "error",
+            message = "Person is both a parent and grandparent of someone.",
+            key = {"parent"})
+pattern bothParentAndGrandparent(person : Person, parent : Person) {
+    find parentOf(person, parent);
+    find grandparentOf(person, parent);
+}
+\end{lstlisting}
+
+\section{The Xtext validation process}
+To validate our query, the Xtext framework parses the query written in VQL
+(partially utilizing VIATRA's code), creates a document object model (DOM) of
+it, and finally, runs checks on said model. The process of building this DOM is
+calling the \texttt{IDerivedStateComputer.installDerivedState} function in the
+Xtext framework, which is responsible for producing the current state of our
+query.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/xtext-validation-process.png}
+\caption{The Xtext validation process}
+\label{fig:xtext-validation-process}
+\end{figure}
+
+The slowest part of this process is building the DOM from the parsed query code.
+During model building, the types of variables must be interpreted, and while
+most of these variables have a \textbf{declared type}, some of them do not, and
+VIATRA Query has to \textbf{infer their types} based on the context they reside
+in.
+
+\begin{lstlisting}[frame=single]
+pattern bothParentAndGrandparent(person : Person, grandparents) {
+    grandparents = count find grandparentOf(person, _);
+}
+\end{lstlisting}
+
+In this small example, the \texttt{person} variable has an explicitly declared
+type of \texttt{Person}, but the type of \texttt{grandparents} must be inferred.
+
+\section{Target platform metamodel}
+%% explain
+TODO
+
+\subsection{Automatic update of target platform metamodel}
+%% be kell mutatni korábban a kapcsoló meglétét, motivációját, működési elvét, hátrányát
+TODO
+
+\chapter{Finding the cause of the editor slowdown}
+
+\section{Setting up a work environment}
 
 \subsection{Eclipse Platform for VIATRA development}
 VIATRA, as an Eclipse plugin is developed in Eclipse itself. As such, I needed
@@ -316,8 +411,6 @@ reducing the potential overhead it might cause.
 \label{fig:yourkit-profiler}
 \end{figure}
 
-\pagebreak
-
 The profiler lets us see the call tree of the profiled software or a list of its
 called functions ordered by the time spent in them. It also has a ``hot spots''
 mode, which highlights the costliest functions. For each function, we can also
@@ -326,8 +419,6 @@ in-depth information about its callees.
 
 The above figure shows such a merged callee list of a function highlighted in
 the ``hot spots'' mode.
-
-\chapter{Finding the cause of the editor slowdown}
 
 \section{Creating a test candidate}
 To begin my work, I had to create a test project with a query, which
@@ -416,12 +507,8 @@ three with most time spent in them are all calling the
 \texttt{AbstractTypeInferrer.getJvmType} method, which is responsible for their
 long run time.
 
+\pagebreak
 \subsection{Profiling without automatic update of target platform metamodels}
-%% TODO
-%% a "target platform" és a "metamodel" kiefejezés is itt hangzik el először
-%% automatic update: be kell mutatni korábban a kapcsoló meglétét, motivációját,
-%% működési elvét, hátrányát, és itt igazolni, hogy tényleg gyorsít
-
 After turning off this automatic update feature, we can have more concise
 profiling results. Repeating the same process yielded the following, similar
 results. Now the \texttt{XtextDocumentReconcileStrategy.postParse} function only
@@ -461,33 +548,6 @@ In conclusion, metamodel updates are very costly, and even though turning
 automatic updates off does save some time, these updates still happen
 frequently and should be optimized. My next step was to understand the code
 responsible for type inference, and look for opportunities to optimize it.
-
-\subsection{The Xtext validation process}
-%% TODO
-%% Ez háttérismeret
-
-To validate our query, the Xtext framework parses the query written in VQL
-(partially utilizing VIATRA's code), creates a document object model (DOM) of
-it, and finally, runs checks on said model. The process of building this DOM is
-calling the \texttt{IDerivedStateComputer.installDerivedState} function in the
-Xtext framework, which is responsible for producing the current state of our
-query.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=150mm, keepaspectratio]{figures/xtext-validation-process.png}
-\caption{The Xtext validation process}
-\label{fig:xtext-validation-process}
-\end{figure}
-
-The slowest part of this process is building the DOM from the parsed query code.
-During model building, the types of variables must be interpreted, and while
-most of these variables have a \textbf{declared type}, some of them do not, and
-VIATRA Query has to \textbf{infer their types} based on the context they reside
-in.
-
-%% TODO
-%% Példa inferred és declared type-ra
 
 My choice of optimization is implementing a cache for the
 \texttt{AbstractTypeInferrer}, to avoid repeated inferences of the same type.
@@ -622,8 +682,6 @@ My first suspicion was that \texttt{Expression} objects are never the ``same'',
 so two \texttt{Expression}s with the same content evalute to two different
 hashes, and my cache always misses.
 
-\pagebreak
-
 To make sure, I did another profiling, now in trace mode. Trace mode means
 counting function calls along with time spent with them, which may seem like the
 best way to profile software, but this mode comes with a major slowdown, making
@@ -674,6 +732,7 @@ The results of these trace mode profilings have proven my suspicion partially
 false. The most part of the \texttt{getType} function was still spent in
 \texttt{getInferredType}, but my cache helped avoid some repeated calculations.
 
+\pagebreak
 \subsection{Conclusion}
 If we look at the previous implementation of \texttt{getType}, we can see that
 \texttt{getDeclaredType} was called the same amount of times as
@@ -681,8 +740,6 @@ If we look at the previous implementation of \texttt{getType}, we can see that
 \texttt{getInferredType} After adding the type cache, the call count of the two
 functions added dropped to only 17.7\% of the total call count. This means that
 \textbf{82.3\% of times the cache did not miss}.
-
-\pagebreak
 
 \section{Fine-grained type caching}
 Caching the calculated types did accomplish a minor speedup, but the editor
@@ -704,12 +761,56 @@ for a cache other than \texttt{OnChangeEvictingCache}, but on developer forums,
 it was explicitly stated to be nonexistent\cite{xtext-fine-grained-caching}. As
 such, I had to look for another solutions.
 
+\pagebreak
 \section{Improving type inference performance}
-%% TODO
-%% TypeInformation.(getType|getAllTypes|getMinimizedTypes)
-%% EMFTypeInferrer.collectConstraints
-%%   PatternLanguageHelper.getReferencedPatternsTransitive
-TODO
+During type inference, the \texttt{EMFTypeInferrer.collectConstraints} function
+does repeated type calculations of patterns. This is done in a loop, which
+first queries and filter referenced patterns, and after that, if the subject
+pattern wasn't already processed, does type inference.
+
+Here is the source code of the \texttt{EMFTypeInferrer.collectConstraints}
+function. \texttt{PatternLanguageHelper.getReferencedPatterns} is always called
+in the for loop, even if \texttt{patternToCheck} was already processed.
+
+\begin{lstlisting}[language=java]
+private TypeInformation collectConstraints(final Pattern pattern) {
+    final TypeInformation types = cache.get(this, pattern.eResource(), () -> new TypeInformation(typeSystem));
+
+    // XXX requiring an ordered call graph might be expensive, but it avoids inconsistent errors during type inference
+    // The UNTYPED_PARAMETER_PREDICATE is used to return a reduced call graph where pattern with only declared types are (transitively) ignored.
+    final Set<Pattern> patternsToCheck = PatternLanguageHelper.getReferencedPatternsTransitive(pattern, true, NON_NULL.and(UNTYPED_PATTERN_PREDICATE));
+    patternsToCheck.add(pattern);
+
+    for (Pattern patternToCheck : patternsToCheck) {
+        PatternLanguageHelper.getReferencedPatterns(patternToCheck).stream()
+            .filter(NON_NULL.and(TYPED_PATTERN_PREDICATE))
+            // Ensure called parameter types are loaded
+            .forEach(typedCall -> rules.loadParameterVariableTypes(typedCall, types));
+        if (!types.isProcessed(patternToCheck)) {
+            rules.inferTypes(patternToCheck, types);
+            for (PatternBody body : patternToCheck.getBodies()) {
+                for (Iterator<EObject> it = body.eAllContents(); it.hasNext();) {
+                    EObject obj = it.next();
+                    if (obj instanceof Constraint || obj instanceof Expression) {
+                        rules.inferTypes(obj, types);
+                    }
+                }
+            }
+            types.setProcessed(patternToCheck);
+        }
+
+    }
+
+    return types;
+}
+\end{lstlisting}
+
+A potential problem was that even if the subject pattern is processed, we still
+query and filter its referenced patterns, causing potentially redundant
+calculations.
+
+Although this seemed like a great lead, unfortunately, skipping this unnecessary
+query did not result in a measurable speedup.
 
 \chapter{Publishing my work}
 \section{Documenting the changes}
@@ -729,6 +830,7 @@ a detailed description of the issue, and some other metadata, such as product,
 version, importance, and target milestone. These tickets then can be assigned to
 developers.
 
+%% TODO: hangsúly, nem én készítettem
 For this thesis work, a new Bugzilla ticket was introduced:
 Bug 569178 -- Improve language tooling performance.
 
@@ -738,8 +840,6 @@ Bug 569178 -- Improve language tooling performance.
 \caption{Eclipse Foundation's Bugzilla bug tracker}
 \label{fig:bugzilla}
 \end{figure}
-
-\pagebreak
 
 \section{Keeping the changes in version control}
 VIATRA source code is stored in a Git repository, hosted by the Eclipse
@@ -772,8 +872,6 @@ Change-Id: I0000000000000000000000000000000000000000
 Signed-off-by: Dénes Fintha <denes.fintha@gmail.com>
 \end{lstlisting}
 
-\pagebreak
-
 \section{Code review}
 Before any code could be integrated to the mainstream VIATRA source, peer review
 must be conducted. The Eclipse Foundation uses Gerrit to do so, which is a
@@ -792,25 +890,6 @@ other developers must accept a commit before its integration.
 \caption{The Gerrit Code Review tool}
 \label{fig:gerrit}
 \end{figure}
-
-\section{Integrating changes to the next VIATRA version}
-%% TODO
-%% Integration process
-TODO
-
-\chapter{Summary}
-This thesis work was centered around investigating a large existing project, and
-finding and fixing performance issues. Although most of the issues originated
-from an external framework, I did manage to achieve a small performance
-increase, which I consider a success.
-
-\section{Improvement opportunities}
-%% TODO
-TODO
-
-\subsection{Fine-grained caching in the Xtext framework}
-%% TODO
-TODO
 
 % ---------------------------------------------------------------------------- %
 
