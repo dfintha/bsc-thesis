@@ -1,3 +1,8 @@
+%% TODO: Re-do profiling!
+%% 10 times original, auto update
+%% 10 times original, no auto update
+%% 10 times solution, no auto update
+
 \documentclass[11pt,a4paper,oneside]{report}
 
 \input{include/packages}
@@ -174,7 +179,7 @@ lets me run the software in profiling mode, and configure the profiler itself
 in Eclipse.
 
 \pagebreak
-\section{Automatic update of target platform metamodel}
+\section{Automatic update of target platform metamodel}\label{sec:MetamodelUpdate}
 The VIATRA framework is commonly used during plug-in development, providing
 services to validate models. As such, it is common that the metamodel of these
 models changes along with the query code. Since currently this can not be
@@ -488,15 +493,9 @@ will represent the same steps taken.
     \item{Start VIATRA in profiling mode, but without starting profiling itself.}
     \item{Wait for Eclipse to start and finish initial tasks.}
     \item{Open the query file, and wait for it to completely load, and highlight syntax.}
-    \item{
-        Navigate to a certain pattern, which we will manually duplicate
-        (\texttt{mustInstanceOfEClassifier\_class}).
-    }
+    \item{Navigate to a certain pattern (\texttt{mustInstanceOfEClassifier\_class}).}
     \item{\textbf{Start profiling in the profiler software.}}
-    \item{
-        Manually type in the pattern again, with a different name
-        (\texttt{mustInstanceTest}).
-    }
+    \item{Paste the pattern same pattern, with a different name (\texttt{mustInstanceTest}).}
     \item{Wait for the Xtext validation process to finish.}
     \item{\textbf{Stop profiling in the profiler software, and save a snapshot.}}
     \item{Quit Eclipse, discarding any changes we made in the file.}
@@ -537,19 +536,26 @@ were the most costly.
         \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 92\% \\
         JvmModelAssociator.installDerivedState & 92\% \\
         JvmModelAssociator\$1.run & 91\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 78\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & - \\
+        ... & - \\
+        \textbf{AbstractTypeInferrer.getJvmType} & 88\% \\
+        \textbf{CompoundMetamodelProviderService.getQualifiedClassName} & 79\% \\
         \bottomrule
     \end{tabular}
     \caption{Merged callee run times in postParse with default settings}
     \label{tab:postparse-default}
 \end{table}
 
-%% TODO: Explain connection between those lambdas and getType
-
-The EMFPatternLanguageJvmModelInferrer class has multiple lambdas, but the top
-three with most time spent in them are all calling the
+The EMFPatternLanguageJvmModelInferrer calls multiple lambdas, but the ones
+responsible for most time spent in them are all calling the
 \texttt{AbstractTypeInferrer.getJvmType} method, which is responsible for their
 long run time.
+
+It should be noted, that the
+\texttt{CompoundMetamodelProviderService.getQualifiedClassName} is only called
+during metamodel update (explained in section \ref{sec:MetamodelUpdate}). As
+such, I did another profiling session, with the automatic update feature turned
+off.
 
 \pagebreak
 \subsection{Profiling without automatic update of target platform metamodels}
@@ -581,15 +587,22 @@ took 67\% of the total run time.
         \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 62\% \\
         JvmModelAssociator.installDerivedState & 61\% \\
         JvmModelAssociator\$1.run & 57\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 52\% \\
+        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & - \\
+        ... & - \\
+        \textbf{AbstractTypeInferrer.getJvmType} & 49\% \\
+        \textbf{AbstractTypeInferrer.getType} & 37\% \\
         \bottomrule
     \end{tabular}
     \caption{Merged callee run times in postParse without automatic update}
     \label{tab:postparse-no-auto-update}
 \end{table}
 
+Although some performance improvements could be noticed, editor hangups still
+happen. Now \texttt{AbstractTypeInferrer.getType} is the most expensive function
+called by \textbf{AbstractTypeInferrer.getJvmType}.
+
 In conclusion, metamodel updates are very costly, and even though turning
-automatic updates off does save some time, these updates still happen
+automatic updates off does save some time, expensive calculations still happen
 frequently and should be optimized. My next step was to understand the code
 responsible for type inference, and look for opportunities to optimize it.
 
@@ -640,18 +653,13 @@ function, which actually does a costly type calculation, and does so repeatedly.
 This looks like a good candidate for some caching mechanism.
 
 \subsection{Caching computed results}
-My first approach was adding a cache to the \texttt{AbstractTypeInferrer} class,
+My approach was adding a cache to the \texttt{AbstractTypeInferrer} class,
 storing the types (\texttt{IInputKey}) of \texttt{Expression} objects. I thought
-this cache would be invalidated at the start of each validation process. As
-such.
+this cache would be invalidated at the start of each validation process.
 
-The following changes were made to the \texttt{AbstractTypeInferrer} class.
+The following significant changes were made to the source code.
 
-\begin{lstlisting}[language=java]
-// ...
-
-private HashMap<Expression, IInputKey> typeCache;
-
+\begin{lstlisting}[caption={AbstractTypeInferrer.java}, language=java]
 // ...
 
 /**
@@ -659,10 +667,8 @@ private HashMap<Expression, IInputKey> typeCache;
  */
 @Override
 public IInputKey getType(Expression ex) {
-    if (typeCache == null)
-        typeCache = new HashMap<>();
-
-    return typeCache.computeIfAbsent(ex, expression -> {
+    TypeInformation typeInformation = getTypeInformation(ex);
+    return typeInformation.getOrComputeType(ex, expression -> {
         final IInputKey declaredType = getDeclaredType(expression);
         if (declaredType != null)
              return declaredType;
@@ -671,12 +677,28 @@ public IInputKey getType(Expression ex) {
 }
 
 // ...
+
+protected abstract TypeInformation getTypeInformation(final EObject element);
+
+// ...
 \end{lstlisting}
 
-\subsection{Clearing the cache}
-Since the type inferrer, which caches the types is thrown away when then
-\texttt{OnChangeEvictingCache} is cleared, there is no need to manually clear
-its type cache.
+\begin{lstlisting}[caption={TypeInformation.java}, language=java]
+// ...
+
+final Map<Expression, IInputKey> typeComputed = new HashMap<>();
+
+// ...
+
+public IInputKey getOrComputeType(Expression expression, Function<? super Expression, ? extends IInputKey> computation) {
+    return typeComputed.computeIfAbsent(expression, computation);
+}
+
+// ...
+\end{lstlisting}
+
+The \texttt{TypeInformation} class did already contain cache for some computed
+values, so I've ended up extending it with this mapping, too.
 
 \subsection{Comparing the optimized state with the original one}
 After making these changes, I did another profiling session, with the same
