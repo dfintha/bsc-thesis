@@ -133,12 +133,26 @@ editor with proper syntax highlighting and code completion to make writing
 patterns easier.
 
 \section{VQL editor slowdowns}
-The main problem with the VQL editor is, that in some cases it is inexplicably
-slow. During manual tests, some files frequently caused 5 to 10 second hangups
-during pattern editing. This notably happens during a process called ``Xtext
-validation''.
+Users have noticed, that the VQL editor is, in some cases inexplicably slow.
+As such, for this issue, a bugzilla ticket was already opened by the
+community\cite{bugzilla-ticket}.
+
+During my manual tests, editing some queries frequently caused 5 to 10 second
+hangups. This notably happens during a process called ``Xtext validation''.
 
 \chapter{Background}
+
+\section{Domain-specific modeling and metamodels}
+Domain-specific modeling is a methodology, which uses models to represent
+systems, mostly by using domain-specific languages (DSL). Often these models
+are then subject to code generation, translating the model of a system to a
+program representing that system.
+
+The entities and relations of these models are described by their
+\textbf{metamodels}, which preactically act as schemas for them, defininf the
+entities and relations in the model. For example, if our model represents a
+family tree, we may have \texttt{Person} entities, and \texttt{mother} and
+\texttt{father} relations between them.
 
 \section{Eclipse plug-in development}
 Eclipse is an integrated development environment (IDE), which can be customized
@@ -146,19 +160,29 @@ with plug-ins. These plug-ins extend the functionality of Eclipse, and can have
 various roles, such as providing support for development in a programming
 language, or integrating the use of an external tool to our workflow.
 
+During plug-in development, the \textbf{target platform} is the Eclipse
+environment we build our plug-in to work with. These plug-ins may contain
+the metamodel(s) for the models managed by them, such as the metamodel for a
+system or even a domain-specific language.
+
 In my case, VIATRA itself is a bundle of Eclipse plug-ins, providing a query
 development environment with an editor and a code generator for model
-queries\cite{viatra}.
+queries, which includes the metamodel for VQL\cite{viatra}.
 
 Integration of the YourKit Java Profiler is also done through a plug-in, which
 lets me run the software in profiling mode, and configure the profiler itself
 in Eclipse.
 
-\section{Domain-specific modeling and metamodels}
-Domain-specific modeling is a methodology, which uses models to represent
-systems, mostly by using domain-specific languages (DSL). Often these models
-are then subject to code generation, translating the model of a system to a
-program representing that system.
+\pagebreak
+\section{Automatic update of target platform metamodel}
+The VIATRA framework is commonly used during plug-in development, providing
+services to validate models. As such, it is common that the metamodel of these
+models changes along with the query code. Since currently this can not be
+tracked, VIATRA periodically check for changes in metamodels.
+
+Since this caused performance issues, there is an experimental switch to disable
+this functionality and use the cached state of the metamodel, however, this may
+cause incorrect functionality if the metamodel did change.
 
 \section{The Xtext language framework}
 VQL was implemented using the Xtext framework. This framework is an effective
@@ -189,7 +213,7 @@ implemented using the Xtend language, which is also part of the Xtext project,
 implemented in Xtext itself. Xtend is a Java dialect, with some modern language
 elements, such as macros, lambdas, and operator overloading\cite{xtend}.
 
-\section{VQL syntax}
+\section{Query language syntax}
 VQL is a datalog dialect, which means that instead of writing functions, we
 write statements, which are solved on our model. The engine will try to match
 the pattern on the model, and show each match in it.
@@ -229,15 +253,37 @@ The first line of the pattern introduces a new \texttt{Node} entity, called
 \label{fig:basic-pattern-explanation-2}
 \end{figure}
 
-\pagebreak
 Finally, the second line declares a parent relation between \texttt{parent} and
 \texttt{grandparent}, finishing the grandparent pattern.
 
+\pagebreak
 \begin{figure}[!htbp]
 \centering
 \includegraphics[height=50mm, keepaspectratio]{figures/basic-pattern-explanation-3.png}
 \caption{Complete grandparent-grandchild pattern}
 \label{fig:basic-pattern-explanation-3}
+\end{figure}
+
+\subsection{Evaluating patterns}
+Let's see an example of this pattern being matched on a model. Let's say we have
+a minimalistic node tree, shown below.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[height=100mm, keepaspectratio]{figures/basic-eval-explanation-1.png}
+\caption{A basic node tree model}
+\label{fig:basic-eval-explanation-1}
+\end{figure}
+
+\pagebreak
+In this model, matching the \texttt{grandparentOf} pattern will give us four
+results: A is the grandparent of D, E, and F, and B is the grandparent of G.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=150mm, keepaspectratio]{figures/basic-eval-explanation-2.png}
+\caption{The grandparent relations in the above model}
+\label{fig:basic-eval-explanation-2}
 \end{figure}
 
 \subsection{Pattern disjunction and composition}
@@ -334,10 +380,11 @@ query.
 
 The slowest part of this process is building the DOM from the parsed query code.
 During model building, the types of variables must be interpreted, and while
-most of these variables have a \textbf{declared type}, some of them do not, and
-VIATRA Query has to \textbf{infer their types} based on the context they reside
-in.
+most of these variables have an explicitly \textbf{declared type}, type
+declaration is optional. VIATRA Query has to \textbf{infer the types of
+implicitly-types variables} based on the expressions they are used in.
 
+\pagebreak
 \begin{lstlisting}[frame=single]
 pattern bothParentAndGrandparent(person : Person, grandparents) {
     grandparents = count find grandparentOf(person, _);
@@ -346,14 +393,6 @@ pattern bothParentAndGrandparent(person : Person, grandparents) {
 
 In this small example, the \texttt{person} variable has an explicitly declared
 type of \texttt{Person}, but the type of \texttt{grandparents} must be inferred.
-
-\section{Target platform metamodel}
-%% explain
-TODO
-
-\subsection{Automatic update of target platform metamodel}
-%% be kell mutatni korábban a kapcsoló meglétét, motivációját, működési elvét, hátrányát
-TODO
 
 \chapter{Finding the cause of the editor slowdown}
 
@@ -504,6 +543,8 @@ were the most costly.
     \caption{Merged callee run times in postParse with default settings}
     \label{tab:postparse-default}
 \end{table}
+
+%% TODO: Explain connection between those lambdas and getType
 
 The EMFPatternLanguageJvmModelInferrer class has multiple lambdas, but the top
 three with most time spent in them are all calling the
@@ -833,8 +874,7 @@ a detailed description of the issue, and some other metadata, such as product,
 version, importance, and target milestone. These tickets then can be assigned to
 developers.
 
-%% TODO: hangsúly, nem én készítettem
-For this thesis work, a new Bugzilla ticket was introduced:
+For this thesis work, a new Bugzilla ticket was introduced for this issue:
 Bug 569178 -- Improve language tooling performance.
 
 \begin{figure}[ht]
