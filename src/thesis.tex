@@ -678,7 +678,9 @@ public IInputKey getOrComputeType(Expression expression, Function<? super Expres
 \end{lstlisting}
 
 The \texttt{TypeInformation} class did already contain cache for some computed
-values, so I've ended up extending it with this mapping, too.
+values, so I've ended up extending it with this mapping, too. Because the
+lifetimes of \texttt{TypeInformation}s are already well-defined, I did not have
+to write any code to clear my cache.
 
 \subsection{Comparing the optimized state with the original one}
 After making these changes, I did another profiling session, with the same
@@ -721,19 +723,19 @@ hashes, and my cache always misses.
 
 To make sure, I did a single pass of profiling in tracing mode, to see how many
 times did we have to call either \texttt{getInferredType} or
-\texttt{getDeclaredType} because of a cache miss.
+\texttt{getDeclaredType} because of a cache miss. Call count percentages are
+rounded to two digits.
 
-%% TODO: New Measurements
 \begin{table}[ht]
     \footnotesize
     \centering
     \begin{tabular}{ l c c c }
         \toprule
-        Function & Time (\%) & Count & Count (\%) \\
+        Function & Count & Count (\%) \\
         \midrule
-        (total calls to getType) & 100\% & 13346 & 100\% \\
-        EMFTypeInferrer.getInferredType & 97\% & 121 & 0.009\% \\
-        EMFTypeInferrer.getDeclaredType & 3\% & 2245 & 0.168\% \\
+        (total calls to getType) & 12368 & 100\% \\
+        EMFTypeInferrer.getInferredType & 63 & 0.51\% \\
+        EMFTypeInferrer.getDeclaredType & 1357 & 10.97\% \\
         \bottomrule
     \end{tabular}
     \caption{Time and call count of callees of \texttt{getType} with my solution}
@@ -741,9 +743,10 @@ times did we have to call either \texttt{getInferredType} or
 \end{table}
 
 To make sure that it was my addition that prevented the redundant calls, I did a
-similar profiling session with the original source code.
+similar profiling session with the original source code, too. Please note, that
+the reason, why the amount of \texttt{getDeclaredType} calls is less than the
+amount of \texttt{getType} is that the process was interrupted.
 
-%% TODO: New Measurements
 \begin{table}[ht]
     \footnotesize
     \centering
@@ -751,18 +754,19 @@ similar profiling session with the original source code.
         \toprule
         Function & Time (\%) & Count & Count (\%) \\
         \midrule
-        (total calls to getType) & 100\% & 24733 & 100\% \\
-        EMFTypeInferrer.getInferredType & 97\% & 276 & 0.01\% \\
-        EMFTypeInferrer.getDeclaredType & 3\% & 24731 & 99.99\% \\
+        (total calls to getType) & 100\% & 12584 & 100\% \\
+        EMFTypeInferrer.getInferredType & 97\% & 138 & 1.10\% \\
+        EMFTypeInferrer.getDeclaredType & 3\% & 12583 & 100.00\% \\
         \bottomrule
     \end{tabular}
     \caption{Time and call count of callees of \texttt{getType} with the original source}
     \label{tab:first-solution-call-counts}
 \end{table}
 
-The results of these trace mode profilings have proven my suspicion partially
-false. The most part of the \texttt{getType} function was still spent in
-\texttt{getInferredType}, but my cache helped avoid some repeated calculations.
+The results of these trace mode profilings have proven my suspicion false. The
+most part of the \texttt{getType} function was still spent in
+\texttt{getInferredType}, but my cache did help avoid some repeated
+calculations.
 
 \pagebreak
 \begin{figure}[ht]
@@ -777,9 +781,10 @@ If we look back at the previous implementation of \texttt{getType}, we can see
 that \texttt{getDeclaredType} was called the same amount of times as
 \texttt{getType} itself, but if it failed, we fell back to
 \texttt{getInferredType} After adding the type cache, the call count of the two
-functions added dropped to only XXXX\% of the total call count. This means that
-\textbf{XXXX\% of times the cache did not miss}.
+functions added dropped to only 11.48\% of the total call count. This means that
+\textbf{88.52\% of times the cache did not miss}.
 
+\pagebreak
 \section{Fine-grained type caching}\label{sec:FineGrained}
 Caching the calculated types did accomplish a minor speedup, but the editor
 still hangs up during Xtext validation.
@@ -937,12 +942,16 @@ After detailed analysis, I could not find any way to significantly increase the
 tooling performance, unless one can extend the functionality of the Xtext
 language framework, on top of which VIATRA Query was implemented.
 
+I did successfully make a very slight improvement in performance, although there
+is always room for more.
+
 \section{Improvement opportunities}
 
 \subsection{Fine-grained cache for the Xtext framework}
 As seen in \ref{sec:FineGrained}, a cache, which could keep patterns stored
 between query changes could by itself cause a significant performance
-improvement.
+improvement. However, Xtext is a completely separate project from VIATRA itself,
+and as such, this can't be realized as part of the VIATRA project.
 
 \subsection{Caching qualified type names}
 When automatic target platform metamodel updates were turned on, the
