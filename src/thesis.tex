@@ -1,8 +1,3 @@
-%% TODO: Re-do profiling!
-%% 10 times original, auto update
-%% 10 times original, no auto update
-%% 10 times solution, no auto update
-
 \documentclass[11pt,a4paper,oneside]{report}
 
 \input{include/packages}
@@ -231,7 +226,7 @@ which can use existing parameters, and introduce new ones.
 This simple pattern will match each grandparent-grandchild relation in a model,
 which contains \texttt{Node}s, with one parent each.
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={Grandparent-grandchild relation for \texttt{Node}s}, frame=single]
 pattern grandparentOf(grandchild : Node, grandparent : Node) {
     Node.parent(grandchild, parent);
     Node.parent(parent, grandparent);
@@ -300,7 +295,7 @@ have \texttt{Person} entities, with a separate mother and father. In this case
 we can use \textbf{pattern disjunction} to match either parent of a
 \texttt{Person}.
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={Parent-child relation, using pattern dijunction}, frame=single]
 pattern parentOf(child : Person, parent : Person) {
     Person.mother(child, parent);
 } or {
@@ -312,7 +307,7 @@ Now we don't have a parent relation, but we do have a pattern, which matches
 every parent of a \texttt{Person}. We can use \textbf{pattern composition} to
 re-use our previously defined pattern(s).
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={Grandparent-grandchild relation, using pattern composition}, frame=single]
 pattern grandparentOf(grandchild : Person, grandparent : Person) {
     find parentOf(grandchild, parent);
     find parentOf(parent, grandparent);
@@ -328,7 +323,8 @@ Any parameter with a single underscore denotes it as a known unused parameter.
 In this example, we don't use the \texttt{Person} entities of the grandparents
 for anything other than counting them.
 
-\begin{lstlisting}[frame=single]
+\pagebreak
+\begin{lstlisting}[caption={Counting grandparents using pattern aggregation}, frame=single]
 pattern grandparentAmount(child : Person, amount) {
     amount == count find grandparentOf(child, _);
 }
@@ -337,7 +333,7 @@ pattern grandparentAmount(child : Person, amount) {
 \subsection{Checking and evaluating expressions}
 Expression evaluation lets users compute Xbase expressions, allowing calculations.
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={Calculating a \texttt{Person}'s full name using expression evaluation}, frame=single]
 pattern fullName(person : Person, name) {
     name == eval(person.firstName + " " + person.lastName);
 }
@@ -347,7 +343,7 @@ Additional constraints can be introduced with the \texttt{check} keyword. This
 is semantically equivalent to declaring an evaluated expression to be
 \texttt{true}.
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={A simple constraint, checking if a \texttt{Person} is an adult}, frame=single]
 pattern isAdult(person : Person) {
     check(person.age >= 18);
 }
@@ -357,7 +353,7 @@ pattern isAdult(person : Person) {
 One can also provide model validation, by writing \textbf{constraint patterns}.
 This can be done by annotating our validation pattern.
 
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[caption={Validation constraint, emitting an error message if two \texttt{Person} entities have both parent-child and grandparent-grandchild relations}, frame=single]
 @Constraint(targetEditorId = "org.dfintha.familytree",
             severity = "error",
             message = "Person is both a parent and grandparent of someone.",
@@ -390,8 +386,8 @@ declaration is optional. VIATRA Query has to \textbf{infer the types of
 implicitly-types variables} based on the expressions they are used in.
 
 \pagebreak
-\begin{lstlisting}[frame=single]
-pattern bothParentAndGrandparent(person : Person, grandparents) {
+\begin{lstlisting}[caption={A pattern with variables of both declared and inferred types}, frame=single]
+pattern grandparentCount(person : Person, grandparents) {
     grandparents = count find grandparentOf(person, _);
 }
 \end{lstlisting}
@@ -484,10 +480,10 @@ which consisted of smaller editing sessions.
 
 \section{Profiling the query language editor}
 \subsection{Declaring a profiling workflow}
-First of all, I had to create a profiling workflow, which describes the steps
-taken to profile the software. Following a fixed workflow ensures that snapshots
-will not contain unrelated parts of the software execution, and that snapshots
-will represent the same steps taken.
+First of all, I had to create a profiling workflow, which precisely describes
+the steps taken to profile the software. Following a fixed workflow ensures that
+the measured data will not contain unrelated parts of the software execution,
+and will always represent the same steps taken.
 
 \begin{enumerate}
     \item{Start VIATRA in profiling mode, but without starting profiling itself.}
@@ -498,6 +494,7 @@ will represent the same steps taken.
     \item{Paste the pattern same pattern, with a different name (\texttt{mustInstanceTest}).}
     \item{Wait for the Xtext validation process to finish.}
     \item{\textbf{Stop profiling in the profiler software, and save a snapshot.}}
+    \item{Repeat steps 5-8 until I have a sufficent amount of snapshots (10).}
     \item{Quit Eclipse, discarding any changes we made in the file.}
 \end{enumerate}
 
@@ -506,50 +503,44 @@ Having a sound profiling plan, I started profiling the software. During my
 first profiling session, I did notice the hangups, when I edited the query. This
 session provided me with the following suspicious function trail. Each row of
 one or more functions in this table was called by the one before it. Rows with
-bold font are representing functions inside the VIATRA code base.
+bold font are representing functions inside the VIATRA code base. It should also
+be noted, that the contents of these tables are averaged values of 10 separate
+measures.
 
 We spent most of the time in the
-\texttt{XtextDocumentReconcileStrategy.postParse} function. The table below
-gives detailed information about which functions called by \texttt{postParse}
-were the most costly.
+\texttt{XtextDocumentReconcileStrategy.postParse} function, 71\% of the total
+run time on average. The table below gives detailed information about which
+functions called by \texttt{postParse} were the most costly.
 
 \begin{table}[ht]
     \footnotesize
     \centering
     \begin{tabular}{ l c }
         \toprule
-        Function & Time (\%) \\
+        Function & Average Time \\
         \midrule
-        XtextDocumentReconcileStrategy.postParse & 100\% \\
-        EcoreUtil2.resolveLazyCrossReferences & 99\% \\
-        BatchLinkableResource.resolveLazyCrossReferences & 99\% \\
-        BatchLinkingService.resolveBatched & 97\% \\
-        AbstractBatchTypeResolver.resolveTypes & 97\% \\
-        CachingBatchTypeResolver.doResolveTypes & 97\% \\
-        OnChangeEvictingCache.get & 95\% \\
-        CachingBatchTypeResolver\$1.get & 95\% \\
-        CachingBatchTypeResolver\$1.get & 95\% \\
-        DefaultBatchTypeResolver.getTypeResolver & 95\% \\
-        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 92\% \\
-        BatchLinkableResource.getContents & 92\% \\
-        DerivedStateAwareResource.installDerivedState & 92\% \\
-        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 92\% \\
-        JvmModelAssociator.installDerivedState & 92\% \\
-        JvmModelAssociator\$1.run & 91\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & - \\
-        ... & - \\
-        \textbf{AbstractTypeInferrer.getJvmType} & 88\% \\
-        \textbf{CompoundMetamodelProviderService.getQualifiedClassName} & 79\% \\
+        XtextDocumentReconcileStrategy.postParse & 71\%, 6770 ms \\
+        (Xtext framework functions) & - \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 63\%, 6055 ms \\
+        JvmModelAssociator.installDerivedState & 63\%, 6055 ms \\
+        JvmModelAssociator\$1.run & 63\%, 5991 ms \\
+        (JvmModelAssociator\$1.run callees) & - \\
+        \textbf{AbstractTypeInferrer.getJvmType} & 61\%, 5871 ms \\
+        (AbstractTypeInferrer.getJvmType callees) & - \\
+        \textbf{CompoundMetamodelProviderService.getQualifiedClassName} & 55\%, 5285 ms \\
         \bottomrule
     \end{tabular}
-    \caption{Merged callee run times in postParse with default settings}
+    \caption{Function run times with default settings}
     \label{tab:postparse-default}
 \end{table}
 
 The EMFPatternLanguageJvmModelInferrer calls multiple lambdas, but the ones
 responsible for most time spent in them are all calling the
 \texttt{AbstractTypeInferrer.getJvmType} method, which is responsible for their
-long run time.
+long run time. In a similar fashion, most of the time spent in
+\textbf{AbstractTypeInferrer.getJvmType} was actually used up not by its
+direct callees, but
+\textbf{CompoundMetamodelProviderService.getQualifiedClassName} through them.
 
 It should be noted, that the
 \texttt{CompoundMetamodelProviderService.getQualifiedClassName} is only called
@@ -557,43 +548,32 @@ during metamodel update (explained in section \ref{sec:MetamodelUpdate}). As
 such, I did another profiling session, with the automatic update feature turned
 off.
 
-\pagebreak
 \subsection{Profiling without automatic update of target platform metamodels}
-After turning off this automatic update feature, we can have more concise
-profiling results. Repeating the same process yielded the following, similar
-results. Now the \texttt{XtextDocumentReconcileStrategy.postParse} function only
-took 67\% of the total run time.
+After turning off automatic platform metamodel updates, we can have more concise
+profiling results with less noise. Repeating the same process yielded the
+following, slightly different results. Now the
+\texttt{XtextDocumentReconcileStrategy.postParse} function only took 38\% of the
+total run time on average, and the responsiveness of the application was
+significantly better.
 
 \begin{table}[ht]
     \footnotesize
     \centering
     \begin{tabular}{ l c }
         \toprule
-        Function & Time (\%) \\
+        Function & Average Time \\
         \midrule
-        XtextDocumentReconcileStrategy.postParse & 100\% \\
-        EcoreUtil2.resolveLazyCrossReferences & 96\% \\
-        BatchLinkableResource.resolveLazyCrossReferences & 96\% \\
-        BatchLinkingService.resolveBatched & 87\% \\
-        AbstractBatchTypeResolver.resolveTypes & 87\% \\
-        CachingBatchTypeResolver.doResolveTypes & 87\% \\
-        OnChangeEvictingCache.get & 75\% \\
-        CachingBatchTypeResolver\$1.get & 75\% \\
-        CachingBatchTypeResolver\$1.get & 75\% \\
-        DefaultBatchTypeResolver.getTypeResolver & 75\% \\
-        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 62\% \\
-        BatchLinkableResource.getContents & 62\% \\
-        DerivedStateAwareResource.installDerivedState & 62\% \\
-        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 62\% \\
-        JvmModelAssociator.installDerivedState & 61\% \\
-        JvmModelAssociator\$1.run & 57\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & - \\
-        ... & - \\
-        \textbf{AbstractTypeInferrer.getJvmType} & 49\% \\
-        \textbf{AbstractTypeInferrer.getType} & 37\% \\
+        XtextDocumentReconcileStrategy.postParse & 38\%, 1707 ms \\
+        (Xtext framework functions) & - \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 21\%, 960 ms \\
+        JvmModelAssociator.installDerivedState & 21\%, 960 ms \\
+        JvmModelAssociator\$1.run & 19\%, 875 ms \\
+        (JvmModelAssociator\$1.run callees) & - \\
+        \textbf{AbstractTypeInferrer.getJvmType} & 16\%, 725 ms \\
+        \textbf{AbstractTypeInferrer.getType} & 13\%, 562 ms \\
         \bottomrule
     \end{tabular}
-    \caption{Merged callee run times in postParse without automatic update}
+    \caption{Function run times without automatic metamodel updates}
     \label{tab:postparse-no-auto-update}
 \end{table}
 
@@ -618,7 +598,7 @@ During the type inference process, \texttt{getJvmType} is called numerous times,
 resulting in a massive amount of processing time spent there. Let us see, how
 this function works.
 
-\begin{lstlisting}[language=java]
+\begin{lstlisting}[caption={Original source code of \texttt{getType}}, language=java]
 // ...
 
 /**
@@ -702,57 +682,48 @@ values, so I've ended up extending it with this mapping, too.
 
 \subsection{Comparing the optimized state with the original one}
 After making these changes, I did another profiling session, with the same
-workflow described above. Seemingly my first solution did not fully accomplish
-my goal, the run time of the validation process remained close to the same. The
-\texttt{XtextDocumentReconcileStrategy.postParse} function still ate up 64\% of
-the runtime (compared to the original 67\%), but the type inference code became
-slightly faster.
+workflow described above. Seemingly my solution did not fully accomplish my
+goal, since the run time of the validation process remained close to the same.
+The \texttt{XtextDocumentReconcileStrategy.postParse} function still ate up 35\%
+of the run time (compared to the original 38\%), but the type inference code
+became very slightly faster.
 
 \begin{table}[ht]
     \footnotesize
     \centering
     \begin{tabular}{ l c c }
         \toprule
-        Function & Time (\%), Original & Time (\%), Changed \\
+        Function & Avg. Time (Before) & Avg. Time (After) \\
         \midrule
-        XtextDocumentReconcileStrategy.postParse & 100\% & 100\% \\
-        EcoreUtil2.resolveLazyCrossReferences & 99\% & 95\% \\
-        BatchLinkableResource.resolveLazyCrossReferences & 99\% & 95\% \\
-        BatchLinkingService.resolveBatched & 97\% & 84\% \\
-        AbstractBatchTypeResolver.resolveTypes & 97\% & 84\% \\
-        CachingBatchTypeResolver.doResolveTypes & 97\% & 84\% \\
-        OnChangeEvictingCache.get & 95\% & 70\% \\
-        CachingBatchTypeResolver\$1.get & 95\% & 70\% \\
-        CachingBatchTypeResolver\$1.get & 95\% & 70\% \\
-        DefaultBatchTypeResolver.getTypeResolver & 95\% & 70\% \\
-        LogicalContainerAwareBatchTypeResolver.getEntryPoints & 92\% & 58\% \\
-        BatchLinkableResource.getContents & 92\% & 58\% \\
-        DerivedStateAwareResource.installDerivedState & 92\% & 58\% \\
-        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 92\% & 58\% \\
-        JvmModelAssociator.installDerivedState & 92\% & 57\% \\
-        JvmModelAssociator\$1.run & 91\% & 54\% \\
-        \textbf{EMFPatternLanguageJvmModelInferrer lambdas} & 52\% & 48\% \\
+        XtextDocumentReconcileStrategy.postParse & 38\%, 1707 ms & 35\%, 1687 ms\\
+        (Xtext framework functions) & - \\
+        \textbf{EMFPatternJvmModelAssociator.installDerivedState} & 21\%, 960 ms & 21\%, 888 ms \\
+        JvmModelAssociator.installDerivedState & 21\%, 960 ms & 21\%, 888 ms \\
+        JvmModelAssociator\$1.run & 19\%, 875 ms & 19\%, 819 ms \\
+        (JvmModelAssociator\$1.run callees) & - \\
+        \textbf{AbstractTypeInferrer.getJvmType} & 16\%, 725 ms & 16\%, 681 ms \\
+        \textbf{AbstractTypeInferrer.getType} & 13\%, 562 ms & 12\%, 519 ms \\
         \bottomrule
     \end{tabular}
-    \caption{Comparison of run time with the unmodified code and my first solution}
-    \label{tab:first-solution-comparison}
+    \caption{Function run times without automatic metamodel updates}
+    \label{tab:postparse-no-auto-update}
 \end{table}
 
 The suspicious part was the ratio of the time spent in functions called by the
 \texttt{getType} function. The purpose of my cache was minimizing calls to the
-\texttt{getInferredType} function, which took the most time. However, the amount
-of time spent in the \texttt{getInferredType} function was roughly the same (
-77\% and 76\%, respectively).
+\texttt{getInferredType} function, which took the most time. However, the
+average amount of time spent in the \texttt{getInferredType} function was
+roughly the same (562 and 519 milliseconds, respectively).
 
 My first suspicion was that \texttt{Expression} objects are never the ``same'',
 so two \texttt{Expression}s with the same content evalute to two different
 hashes, and my cache always misses.
 
-To make sure, I did another profiling, now in trace mode. Trace mode means
-counting function calls along with time spent with them, which may seem like the
-best way to profile software, but this mode comes with a major slowdown, making
-it harder to perform the profiling workflow.
+To make sure, I did a single pass of profiling in tracing mode, to see how many
+times did we have to call either \texttt{getInferredType} or
+\texttt{getDeclaredType} because of a cache miss.
 
+%% TODO: New Measurements
 \begin{table}[ht]
     \footnotesize
     \centering
@@ -765,14 +736,14 @@ it harder to perform the profiling workflow.
         EMFTypeInferrer.getDeclaredType & 3\% & 2245 & 0.168\% \\
         \bottomrule
     \end{tabular}
-    \caption{Time and call count of callees of \texttt{getType} with my first solution}
+    \caption{Time and call count of callees of \texttt{getType} with my solution}
     \label{tab:first-solution-call-counts}
 \end{table}
 
-In previous profiling sessions of the original code, I've used the sampling
-mode. To compare the results, I also had to perform a tracing profiling session
-using the original source. The results can be seen below.
+To make sure that it was my addition that prevented the redundant calls, I did a
+similar profiling session with the original source code.
 
+%% TODO: New Measurements
 \begin{table}[ht]
     \footnotesize
     \centering
@@ -789,25 +760,27 @@ using the original source. The results can be seen below.
     \label{tab:first-solution-call-counts}
 \end{table}
 
-Please note, that during the measurement of the original source, the minimal
-difference between the amount of \texttt{getType} and \texttt{getDeclaredType}
-call counts may be attributed to the termination of the profiling session, while
-an Xtext validation process was still in progress.
-
 The results of these trace mode profilings have proven my suspicion partially
 false. The most part of the \texttt{getType} function was still spent in
 \texttt{getInferredType}, but my cache helped avoid some repeated calculations.
 
 \pagebreak
+\begin{figure}[ht]
+\centering
+\includegraphics[width=150mm,keepaspectratio]{figures/measurements.png}
+\caption{Averages of profiling results}
+\label{fig:profiling-measurements}
+\end{figure}
+
 \subsection{Conclusion}
-If we look at the previous implementation of \texttt{getType}, we can see that
-\texttt{getDeclaredType} was called the same amount of times as
+If we look back at the previous implementation of \texttt{getType}, we can see
+that \texttt{getDeclaredType} was called the same amount of times as
 \texttt{getType} itself, but if it failed, we fell back to
 \texttt{getInferredType} After adding the type cache, the call count of the two
-functions added dropped to only 17.7\% of the total call count. This means that
-\textbf{82.3\% of times the cache did not miss}.
+functions added dropped to only XXXX\% of the total call count. This means that
+\textbf{XXXX\% of times the cache did not miss}.
 
-\section{Fine-grained type caching}
+\section{Fine-grained type caching}\label{sec:FineGrained}
 Caching the calculated types did accomplish a minor speedup, but the editor
 still hangs up during Xtext validation.
 
@@ -838,7 +811,7 @@ Here is the source code of the \texttt{EMFTypeInferrer.collectConstraints}
 function. \texttt{PatternLanguageHelper.getReferencedPatterns} is always called
 in the for loop, even if \texttt{patternToCheck} was already processed.
 
-\begin{lstlisting}[language=java]
+\begin{lstlisting}[caption={Original source code of \texttt{collectConstraints}}, language=java]
 private TypeInformation collectConstraints(final Pattern pattern) {
     final TypeInformation types = cache.get(this, pattern.eResource(), () -> new TypeInformation(typeSystem));
 
@@ -926,7 +899,7 @@ should include the bug identifier and title in its commit message, along with
 a short description, sign-off information that proves the changes in the commit
 were made by me, and a change ID for the code review tool.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={The contents of my commit message}, language=java]
 [569178] Improve language tooling performance
 
 This commit introduces a caching mechanism for the AbstractTypeInferrer
@@ -955,6 +928,27 @@ other developers must accept a commit before its integration.
 \caption{The Gerrit Code Review tool}
 \label{fig:gerrit}
 \end{figure}
+
+\chapter{Summary}
+
+During my thesis work, I've looked into into the depths of VIATRA Query's
+process of parsing query code, and searched for ways to improve its performance.
+After detailed analysis, I could not find any way to significantly increase the
+tooling performance, unless one can extend the functionality of the Xtext
+language framework, on top of which VIATRA Query was implemented.
+
+\section{Improvement opportunities}
+
+\subsection{Fine-grained cache for the Xtext framework}
+As seen in \ref{sec:FineGrained}, a cache, which could keep patterns stored
+between query changes could by itself cause a significant performance
+improvement.
+
+\subsection{Caching qualified type names}
+When automatic target platform metamodel updates were turned on, the
+\texttt{CompoundMetamodelProviderService.getQualifiedClassName} function ate up
+most of the time. This value could be cached, too, however this can be worked
+around by turning updates off in the VIATRA tooling settings.
 
 % ---------------------------------------------------------------------------- %
 
