@@ -120,7 +120,6 @@ model-based engineering.
 \label{fig:eclipse-viatra}
 \end{figure}
 
-\pagebreak
 \section{VIATRA Query Language (VQL)}
 An effective way of validating models is declaring patterns indicating incorrect
 models. For example, if our model represents a family tree, we may look for
@@ -172,17 +171,6 @@ queries, which includes the metamodel for VQL\cite{viatra}.
 Integration of the YourKit Java Profiler is also done through a plug-in, which
 lets me run the software in profiling mode, and configure the profiler itself
 in Eclipse.
-
-\pagebreak
-\section{Automatic update of target platform metamodel}\label{sec:MetamodelUpdate}
-The VIATRA framework is commonly used during plug-in development, providing
-services to validate models. As such, it is common that the metamodel of these
-models changes along with the query code. Since currently this can not be
-tracked, VIATRA periodically check for changes in metamodels.
-
-Since this caused performance issues, there is an experimental switch to disable
-this functionality and use the cached state of the metamodel, however, this may
-cause incorrect functionality if the metamodel did change.
 
 \section{The Xtext language framework}
 VQL was implemented using the Xtext framework. This framework is an effective
@@ -256,7 +244,6 @@ The first line of the pattern introduces a new \texttt{Node} entity, called
 Finally, the second line declares a parent relation between \texttt{parent} and
 \texttt{grandparent}, finishing the grandparent pattern.
 
-\pagebreak
 \begin{figure}[!htbp]
 \centering
 \includegraphics[height=50mm, keepaspectratio]{figures/basic-pattern-explanation-3.png}
@@ -275,7 +262,6 @@ a minimalistic node tree, shown below.
 \label{fig:basic-eval-explanation-1}
 \end{figure}
 
-\pagebreak
 In this model, matching the \texttt{grandparentOf} pattern will give us four
 results: A is the grandparent of D, E, and F, and B is the grandparent of G.
 
@@ -323,7 +309,6 @@ Any parameter with a single underscore denotes it as a known unused parameter.
 In this example, we don't use the \texttt{Person} entities of the grandparents
 for anything other than counting them.
 
-\pagebreak
 \begin{lstlisting}[caption={Counting grandparents using pattern aggregation}, frame=single]
 pattern grandparentAmount(child : Person, amount) {
     amount == count find grandparentOf(child, _);
@@ -364,7 +349,9 @@ pattern bothParentAndGrandparent(person : Person, parent : Person) {
 }
 \end{lstlisting}
 
-\section{The Xtext validation process}
+\section{Implementation details of VQL language services}
+
+\subsection{Validation process}
 To validate our query, the Xtext framework parses the query written in VQL
 (partially utilizing VIATRA's code), creates a document object model (DOM) of
 it, and finally, runs checks on said model. The process of building this DOM is
@@ -385,7 +372,6 @@ most of these variables have an explicitly \textbf{declared type}, type
 declaration is optional. VIATRA Query has to \textbf{infer the types of
 implicitly-types variables} based on the expressions they are used in.
 
-\pagebreak
 \begin{lstlisting}[caption={A pattern with variables of both declared and inferred types}, frame=single]
 pattern grandparentCount(person : Person, grandparents) {
     grandparents = count find grandparentOf(person, _);
@@ -394,6 +380,19 @@ pattern grandparentCount(person : Person, grandparents) {
 
 In this small example, the \texttt{person} variable has an explicitly declared
 type of \texttt{Person}, but the type of \texttt{grandparents} must be inferred.
+
+\subsection{Automatic update of target platform metamodel}\label{subsec:MetamodelUpdate}
+The VIATRA framework is commonly used during plug-in development, providing
+services to validate models. As such, it is common that the metamodel of these
+models changes along with the query code.
+
+Currently metamodel changes can not be tracked, resulting in periodical checks
+for them. This is implemented in the
+\texttt{TargetPlatformMetamodelsIndex.update()} function.
+
+Since this caused performance issues, there is an experimental switch to disable
+this functionality and use the cached state of metamodels, however, this may
+cause incorrect functionality if the metamodel did change.
 
 \chapter{Finding the cause of the editor slowdown}
 
@@ -544,7 +543,7 @@ direct callees, but
 
 It should be noted, that the
 \texttt{CompoundMetamodelProviderService.getQualifiedClassName} is only called
-during metamodel update (explained in section \ref{sec:MetamodelUpdate}). As
+during metamodel update (explained in section \ref{subsec:MetamodelUpdate}). As
 such, I did another profiling session, with the automatic update feature turned
 off.
 
@@ -591,12 +590,15 @@ My choice of optimization is implementing a cache for the
 Since it takes a large part of the run time (33\% without automatic update,
 and 75\% with it), the speedup should be significant.
 
-\chapter{Optimizing query metamodel generation}
+\chapter{Fixing performance issues}
+In this chapter, I'll present three separate opportunities to increase the
+performance of VQL tooling.
+
 \section{Implementing a type inferrer cache}
 \subsection{Inspecting the original functionality}
 During the type inference process, \texttt{getJvmType} is called numerous times,
-resulting in a massive amount of processing time spent there. Let us see, how
-this function works.
+resulting in a massive amount of processing time (more than 6 seconds) spent
+there. Let us see, how this function works.
 
 \begin{lstlisting}[caption={Original source code of \texttt{getType}}, language=java]
 // ...
@@ -633,9 +635,11 @@ function, which actually does a costly type calculation, and does so repeatedly.
 This looks like a good candidate for some caching mechanism.
 
 \subsection{Caching computed results}
-My approach was adding a cache to the \texttt{AbstractTypeInferrer} class,
-storing the types (\texttt{IInputKey}) of \texttt{Expression} objects. I thought
-this cache would be invalidated at the start of each validation process.
+My approach was using a cache in the \texttt{AbstractTypeInferrer} class,
+which was implemented in the \texttt{TypeInformation} class. This cache
+stores the types (\texttt{IInputKey}) of \texttt{Expression} objects. This
+cache is invalidated by each change in the file, but helps avoid repeated
+calculations during each pass.
 
 The following significant changes were made to the source code.
 
@@ -711,20 +715,17 @@ became very slightly faster.
     \label{tab:postparse-no-auto-update}
 \end{table}
 
-The suspicious part was the ratio of the time spent in functions called by the
-\texttt{getType} function. The purpose of my cache was minimizing calls to the
+The time spent in functions called by the \texttt{getType} function did not
+significantly decrease. The purpose of my cache was minimizing calls to the
 \texttt{getInferredType} function, which took the most time. However, the
-average amount of time spent in the \texttt{getInferredType} function was
-roughly the same (562 and 519 milliseconds, respectively).
+average amount of time spent there was roughly the same (562 and 519
+milliseconds, respectively).
 
-My first suspicion was that \texttt{Expression} objects are never the ``same'',
-so two \texttt{Expression}s with the same content evalute to two different
-hashes, and my cache always misses.
-
-To make sure, I did a single pass of profiling in tracing mode, to see how many
-times did we have to call either \texttt{getInferredType} or
-\texttt{getDeclaredType} because of a cache miss. Call count percentages are
-rounded to two digits.
+To make sure that hashing two \texttt{Expression} objects representing the same
+expression do produce identical hashes, I did a single pass of profiling in
+tracing mode, to see how many times did we have to call either
+\texttt{getInferredType} or \texttt{getDeclaredType} because of a cache miss.
+Call count percentages are rounded to two digits.
 
 \begin{table}[ht]
     \footnotesize
@@ -742,10 +743,10 @@ rounded to two digits.
     \label{tab:first-solution-call-counts}
 \end{table}
 
-To make sure that it was my addition that prevented the redundant calls, I did a
-similar profiling session with the original source code, too. Please note, that
-the reason, why the amount of \texttt{getDeclaredType} calls is less than the
-amount of \texttt{getType} is that the process was interrupted.
+To also make sure that it was my addition that prevented the redundant calls, I
+did a similar profiling session with the original source code, too. Please note,
+that the reason, why the amount of \texttt{getDeclaredType} calls is less than
+the amount of \texttt{getType} is that the process was interrupted.
 
 \begin{table}[ht]
     \footnotesize
@@ -768,11 +769,30 @@ most part of the \texttt{getType} function was still spent in
 \texttt{getInferredType}, but my cache did help avoid some repeated
 calculations.
 
-\pagebreak
+To see how much memory did my cache use, I made two memory snapshots -- one with
+the original source, and one with my cache implementation. I had to check the
+size difference of the \texttt{TypeInformation} class, which contained my cached
+values. While the original implementation used up 40 bytes of memory, my cache
+added almost 3 megabytes of memory.
+
+\subsection{Profiling results}
+To compare the profiling results original and the modified source code, I did
+separate profiling sessions with 10 measurements of each case:
+\begin{itemize}
+    \item{the original source code with default settings,}
+    \item{the original source code without automatic platform metamodel updates,}
+    \item{and the modified source code without automatic platform metamodel updates}
+\end{itemize}
+
+In the following figure, each table represents one of these cases (noted on the
+top left corner), each row represents either the time spent in a function, or
+the percentage of total time spent there, and each column is a separate
+measurement. The rightmost column contains the averages of the values.
+
 \begin{figure}[ht]
 \centering
 \includegraphics[width=150mm,keepaspectratio]{figures/measurements.png}
-\caption{Averages of profiling results}
+\caption{Profiling results with calculated averages}
 \label{fig:profiling-measurements}
 \end{figure}
 
@@ -781,10 +801,12 @@ If we look back at the previous implementation of \texttt{getType}, we can see
 that \texttt{getDeclaredType} was called the same amount of times as
 \texttt{getType} itself, but if it failed, we fell back to
 \texttt{getInferredType} After adding the type cache, the call count of the two
-functions added dropped to only 11.48\% of the total call count. This means that
-\textbf{88.52\% of times the cache did not miss}.
+functions added dropped to only 11.48\% of the total call count.
 
-\pagebreak
+However, the fact that this caching mechanism did not result in a significant
+speedup indicates, that other caching mechanisms of the functions responsible
+for type inference already help us avoid the most costly calculations.
+
 \section{Fine-grained type caching}\label{sec:FineGrained}
 Caching the calculated types did accomplish a minor speedup, but the editor
 still hangs up during Xtext validation.
@@ -796,21 +818,22 @@ processing, avoiding re-calculation of the same type in one process}, but some
 of the values still need to be recalculated.
 
 To further optimize the process, these calculated types for expressions could
-be kept in a cache that persists between changed states, as long as the meaning
-of those expression remain the same. This could result in an additional
+be kept in a cache that persists between changed states, as long as the parts of
+the file relevant to them did not change. This could result in an additional
 significant speedup.
 
 Looking for such a cache mechanism, I studied the Xtext framework documentation
 for a cache other than \texttt{OnChangeEvictingCache}, but on developer forums,
-it was explicitly stated to be nonexistent\cite{xtext-fine-grained-caching}. As
-such, I had to look for another solutions.
+it was stated to be nonexistent, and extremely complex to
+implement\cite{xtext-fine-grained-caching}. As such, I had to look for another
+solutions.
 
-\pagebreak
 \section{Improving type inference performance}
-During type inference, the \texttt{EMFTypeInferrer.collectConstraints} function
-does repeated type calculations of patterns. This is done in a loop, which
-first queries and filter referenced patterns, and after that, if the subject
-pattern wasn't already processed, does type inference.
+During type inference, the \texttt{EMFTypeInferrer.collectConstraints} function,
+which takes up the most time in \texttt{getInferredType}, does repeated type
+calculations of patterns. This is done in a loop, which first queries and filter
+referenced patterns, and after that, if the subject pattern wasn't already
+processed, does type inference.
 
 Here is the source code of the \texttt{EMFTypeInferrer.collectConstraints}
 function. \texttt{PatternLanguageHelper.getReferencedPatterns} is always called
@@ -849,115 +872,80 @@ private TypeInformation collectConstraints(final Pattern pattern) {
 }
 \end{lstlisting}
 
-A potential problem was that even if the subject pattern is processed, we still
-query and filter its referenced patterns, causing potentially redundant
+A potential problem was that even if the subject pattern was already processed,
+we still query and filter its referenced patterns, causing potentially redundant
 calculations.
 
-Although this seemed like a great lead, unfortunately, skipping this unnecessary
-query did not result in a measurable speedup.
+In this part, I made a simple change in the loop to avoid any calculations on
+already processed patterns.
 
-\chapter{Publishing my work}
-\section{Documenting the changes}
-It is just natural, that we would document the changes we've made to the users,
-even if it's not a functional change. The VIATRA documentation is written in
-asciidoc format, and each release has its own changelog.
+\begin{lstlisting}[caption={Modified source code of \texttt{collectConstraints}}, language=java]
+private TypeInformation collectConstraints(final Pattern pattern) {
+    final TypeInformation types = cache.get(this, pattern.eResource(), () -> new TypeInformation(typeSystem));
 
-These documentation files are stored in the
-\texttt{org.eclipse.viatra.documentation.help} package. Documenting my work was
-as simple as adding a new line to the ``New and Noteworthy'' section of the
-release documentation for the upcoming VIATRA version (2.5).
+    // XXX requiring an ordered call graph might be expensive, but it avoids inconsistent errors during type inference
+    // The UNTYPED_PARAMETER_PREDICATE is used to return a reduced call graph where pattern with only declared types are (transitively) ignored.
+    final Set<Pattern> patternsToCheck = PatternLanguageHelper.getReferencedPatternsTransitive(pattern, true, NON_NULL.and(UNTYPED_PATTERN_PREDICATE));
+    patternsToCheck.add(pattern);
 
-\section{Opening a bug tracker ticket}
-The Eclipse Foundation uses Bugzilla as its bug tracker. Each known bug has a
-ticket assigned, and this ticket has a unique identifier. Tickets contain
-a detailed description of the issue, and some other metadata, such as product,
-version, importance, and target milestone. These tickets then can be assigned to
-developers.
+    for (Pattern patternToCheck : patternsToCheck) {
+        if (types.isProcessed(patternToCheck))
+            continue;
 
-For this thesis work, a new Bugzilla ticket was introduced for this issue:
-Bug 569178 -- Improve language tooling performance.
+        PatternLanguageHelper.getReferencedPatterns(patternToCheck).stream()
+            .filter(NON_NULL.and(TYPED_PATTERN_PREDICATE))
+            // Ensure called parameter types are loaded
+            .forEach(typedCall -> rules.loadParameterVariableTypes(typedCall, types));
+        rules.inferTypes(patternToCheck, types);
+        for (PatternBody body : patternToCheck.getBodies()) {
+            for (Iterator<EObject> it = body.eAllContents(); it.hasNext();) {
+                EObject obj = it.next();
+                if (obj instanceof Constraint || obj instanceof Expression) {
+                    rules.inferTypes(obj, types);
+                }
+            }
+        }
+        types.setProcessed(patternToCheck);
+    }
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=150mm, keepaspectratio]{figures/bugzilla.png}
-\caption{Eclipse Foundation's Bugzilla bug tracker}
-\label{fig:bugzilla}
-\end{figure}
-
-\section{Keeping the changes in version control}
-VIATRA source code is stored in a Git repository, hosted by the Eclipse
-foundation. To obtain the source code, developers have to \textbf{clone} the
-repository, and work can be done on their own \textbf{branches}. Git has a
-command-line tool, but Eclipse can also manage version control by using the
-Git perspective.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=150mm, keepaspectratio]{figures/eclipse-git.png}
-\caption{The Git perspective in Eclipse}
-\label{fig:eclipse-git}
-\end{figure}
-
-Changes on the source code are contained in \textbf{commits}, and in Eclipse
-development each bug fixing commit correlates with a Bugzilla ticket, and
-should include the bug identifier and title in its commit message, along with
-a short description, sign-off information that proves the changes in the commit
-were made by me, and a change ID for the code review tool.
-
-\begin{lstlisting}[caption={The contents of my commit message}, language=java]
-[569178] Improve language tooling performance
-
-This commit introduces a caching mechanism for the AbstractTypeInferrer
-class, allowing it to cache inferred types and avoiding repeatedly
-calculating the types of expressions.
-
-Change-Id: I0000000000000000000000000000000000000000
-Signed-off-by: Dénes Fintha <denes.fintha@gmail.com>
+    return types;
+}
 \end{lstlisting}
 
-\section{Code review}
-Before any code could be integrated to the mainstream VIATRA source, peer review
-must be conducted. The Eclipse Foundation uses Gerrit to do so, which is a
-web-based code review tool.
-
-Gerrit supports multiple versions of the same commit, identified via a
-\texttt{Change-Id}, which is denoted in the commit message.
-
-In Gerrit, developers can see other developers' work, and comment and rate their
-commits. Each organization can have their own rules about peer review, i.e. two
-other developers must accept a commit before its integration.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=150mm, keepaspectratio]{figures/gerrit.png}
-\caption{The Gerrit Code Review tool}
-\label{fig:gerrit}
-\end{figure}
+However, after a profiling session, I did not find any measurable performance
+differences. The cause of this is that the
+\texttt{getReferencedPatternsTransitive} function also has a caching mechanism,
+and ordering is done by adding \texttt{Pattern}s to a \texttt{TreeSet}.
 
 \chapter{Summary}
 
-During my thesis work, I've looked into into the depths of VIATRA Query's
-process of parsing query code, and searched for ways to improve its performance.
-After detailed analysis, I could not find any way to significantly increase the
+During my work, I've looked into into the depths of VIATRA Query's process of
+parsing query code, and searched for ways to improve its performance. After
+detailed analysis, I could not find any way to significantly increase the
 tooling performance, unless one can extend the functionality of the Xtext
 language framework, on top of which VIATRA Query was implemented.
 
-I did successfully make a very slight improvement in performance, although there
-is always room for more.
+Sadly, the improvements made by my caching mechanisms were miniscule. As such,
+it was not published to the mainstream code base.
 
 \section{Improvement opportunities}
 
 \subsection{Fine-grained cache for the Xtext framework}
 As seen in \ref{sec:FineGrained}, a cache, which could keep patterns stored
 between query changes could by itself cause a significant performance
-improvement. However, Xtext is a completely separate project from VIATRA itself,
-and as such, this can't be realized as part of the VIATRA project.
+improvement. However, this is an extremely complex task.
 
 \subsection{Caching qualified type names}
 When automatic target platform metamodel updates were turned on, the
 \texttt{CompoundMetamodelProviderService.getQualifiedClassName} function ate up
-most of the time. This value could be cached, too, however this can be worked
-around by turning updates off in the VIATRA tooling settings.
+most of the time. The problem with caching these, is that we have to iterate
+over each metamodel, and that process can not be cached. However, we could avoid
+repeatedly iterating over metamodels during validation, by disabling the
+automatic update feature at the start of the process, and re-enabling it when it
+ends.
+
+This issue can be worked around by turning updates off in the VIATRA tooling
+settings.
 
 % ---------------------------------------------------------------------------- %
 
