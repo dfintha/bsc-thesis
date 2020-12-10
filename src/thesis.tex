@@ -912,9 +912,7 @@ private TypeInformation collectConstraints(final Pattern pattern) {
 \end{lstlisting}
 
 However, after a profiling session, I did not find any measurable performance
-differences. The cause of this is that the
-\texttt{getReferencedPatternsTransitive} function also has a caching mechanism,
-and ordering is done by adding \texttt{Pattern}s to a \texttt{TreeSet}.
+differences.
 
 \chapter{Summary}
 
