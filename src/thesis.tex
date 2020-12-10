@@ -769,11 +769,10 @@ most part of the \texttt{getType} function was still spent in
 \texttt{getInferredType}, but my cache did help avoid some repeated
 calculations.
 
-To see how much memory did my cache use, I made two memory snapshots -- one with
-the original source, and one with my cache implementation. I had to check the
-size difference of the \texttt{TypeInformation} class, which contained my cached
-values. While the original implementation used up 40 bytes of memory, my cache
-added almost 3 megabytes of memory.
+To see how much memory did my cache use, I've made a memory snapshot of the
+modified state. In this snapshow the \texttt{TypeInformation} class only took
+3 megabytes of memory (including my cache). As such, its memory consumption did
+not raise any problems.
 
 \subsection{Profiling results}
 To compare the profiling results original and the modified source code, I did
